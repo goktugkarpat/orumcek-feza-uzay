@@ -1113,36 +1113,115 @@ function drawMiniRocket(stage, flame) {
     ctx.strokeStyle = '#adb5bd'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.arc(0, -12, 2.3, 0, TAU); ctx.stroke();
   }
 }
-// kocaman tekerlekli uzay arabası (tekerlekler y=0'da, +x yönüne gider)
-function drawSpaceCar(wr, bounce) {
-  ctx.save(); ctx.translate(0, -bounce);
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = '#ced4da'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(-7, -12); ctx.lineTo(-10, -23); ctx.stroke();
-  ctx.fillStyle = '#ffd43b'; ctx.beginPath(); ctx.moveTo(-10, -23); ctx.lineTo(-3.5, -21); ctx.lineTo(-10, -19); ctx.closePath(); ctx.fill();
-  const cg = ctx.createRadialGradient(-2, -15, 0.5, -1, -12, 7);
-  cg.addColorStop(0, 'rgba(255,255,255,0.7)'); cg.addColorStop(0.5, 'rgba(150,210,255,0.45)'); cg.addColorStop(1, 'rgba(90,150,230,0.6)');
-  ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(-1, -11.5, 6.2, Math.PI, 0); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(-1, -11.5, 4.5, Math.PI * 1.1, Math.PI * 1.45); ctx.stroke();
-  const bg = ctx.createLinearGradient(0, -13, 0, -3);
-  bg.addColorStop(0, '#ff8787'); bg.addColorStop(0.5, '#e03131'); bg.addColorStop(1, '#8a1414');
-  ctx.fillStyle = bg;
-  ctx.beginPath(); ctx.moveTo(-14, -4); ctx.lineTo(-14, -8.5); ctx.quadraticCurveTo(-13.5, -11.5, -9, -11.5); ctx.lineTo(7, -11.5);
-  ctx.quadraticCurveTo(12.5, -11, 14, -6.5); ctx.lineTo(14, -4); ctx.quadraticCurveTo(0, -2.5, -14, -4); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#ffd43b'; ctx.fillRect(-12, -8, 24, 1.4);
-  ctx.fillStyle = '#fff'; ctx.font = `900 3.6px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('FEZA', 1, -5.3);
-  ctx.globalCompositeOperation = 'lighter';
-  const hg = ctx.createRadialGradient(14, -7.5, 0, 14, -7.5, 7);
-  hg.addColorStop(0, 'rgba(255,245,180,0.9)'); hg.addColorStop(1, 'rgba(255,245,180,0)');
-  ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(14, -7.5, 7, 0, TAU); ctx.fill();
-  ctx.globalCompositeOperation = 'source-over';
-  for (const wx of [-8.5, 8.5]) {
-    ctx.fillStyle = '#1e1e24'; ctx.beginPath(); ctx.arc(wx, -2.8, 4.4, 0, TAU); ctx.fill();
-    ball(wx, -2.8, 2.3, { l: '#ffffff', b: '#adb5bd', d: '#495057' });
-    ctx.strokeStyle = '#343a40'; ctx.lineWidth = 0.6; ctx.beginPath();
-    for (let i = 0; i < 4; i++) { const a = wr + i * Math.PI / 2; ctx.moveTo(wx, -2.8); ctx.lineTo(wx + Math.cos(a) * 2.2, -2.8 + Math.sin(a) * 2.2); }
-    ctx.stroke();
+// benekli sürpriz yumurta (taban y=0); çatladıkça çizgiler artar, açılınca yavru ejderha çıkar
+function drawEgg(cracks, wob, hatch, col) {
+  ctx.save(); ctx.rotate(Math.sin(time * 30) * 0.14 * wob);
+  const shell = (c) => { const g = ctx.createRadialGradient(-4, -18, 2, 0, -12, 16); g.addColorStop(0, '#fffdf5'); g.addColorStop(0.7, '#fff0d4'); g.addColorStop(1, '#e8c99a'); ctx.fillStyle = g; };
+  if (hatch <= 0) {
+    shell(); ctx.beginPath(); ctx.ellipse(0, -12, 10, 13, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = rgba(col, 0.85);
+    for (const [x, y, r] of [[-4, -16, 2.4], [4, -9, 2], [3, -19, 1.6], [-3, -6, 1.8], [6, -14, 1.3]]) { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); }
+    ctx.strokeStyle = '#6b4a2b'; ctx.lineWidth = 0.9; ctx.lineJoin = 'miter';
+    const C = [[[-7, -14], [-4, -11], [-1, -14], [2, -10]], [[2, -10], [5, -13], [8, -9]], [[-8, -7], [-5, -4], [-2, -7], [1, -3]]];
+    for (let i = 0; i < Math.min(cracks, 3); i++) { ctx.beginPath(); C[i].forEach(([x, y], j) => j ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); }
+  } else {
+    const k = clamp(hatch / 0.5, 0, 1);
+    ctx.save(); ctx.translate(0, -4 - 12 * easeOutBack(k)); drawDragon(col, true, 0.9); ctx.restore();
+    shell(); ctx.beginPath(); ctx.moveTo(-10, -12);
+    for (let i = 1; i <= 8; i++) ctx.lineTo(-10 + i * 2.5, -12 + (i % 2 ? -3 : 0));
+    ctx.ellipse(0, -12, 10, 13, 0, 0, Math.PI); ctx.closePath(); ctx.fill();
+    ctx.save(); ctx.globalAlpha = 1 - k; ctx.translate(7 * k, -18 - 22 * k); ctx.rotate(0.9 * k);
+    shell(); ctx.beginPath(); ctx.ellipse(0, 0, 9, 7, 0, Math.PI, TAU); ctx.fill(); ctx.restore();
   }
   ctx.restore();
+}
+// yavru ejderha (ayakları y=0'da, önden)
+function drawDragon(col, happy, s = 1) {
+  ctx.save(); ctx.scale(s, s); ctx.lineCap = 'round';
+  const dk = darken(col, 0.35), lt = lighten(col, 0.45), flap = Math.sin(time * 10) * 0.5;
+  ctx.strokeStyle = col; ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(4, -4); ctx.quadraticCurveTo(14, -2, 13, -10); ctx.stroke();
+  ctx.fillStyle = dk; ctx.beginPath(); ctx.moveTo(11, -10); ctx.lineTo(13.5, -15); ctx.lineTo(15, -9.5); ctx.closePath(); ctx.fill();
+  for (const sd of [-1, 1]) {
+    ctx.save(); ctx.translate(sd * 6, -14); ctx.rotate(sd * (0.3 + flap * 0.5));
+    ctx.fillStyle = rgba(lt, 0.95); ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(sd * 9, -11, sd * 14, -4);
+    ctx.quadraticCurveTo(sd * 10, -2, sd * 9, 2); ctx.quadraticCurveTo(sd * 5, 0, 0, 3); ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+  let g = ctx.createRadialGradient(-2, -12, 1, 0, -9, 10); g.addColorStop(0, lt); g.addColorStop(0.6, col); g.addColorStop(1, dk);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, -9, 7.5, 8.5, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#fff3c4'; ctx.beginPath(); ctx.ellipse(0, -7.5, 4.5, 5.5, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = dk; ctx.beginPath(); ctx.ellipse(-3.5, -0.8, 2.6, 1.5, 0, 0, TAU); ctx.ellipse(3.5, -0.8, 2.6, 1.5, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#fff3bf';
+  for (const sd of [-1, 1]) { ctx.beginPath(); ctx.moveTo(sd * 2.5, -26.5); ctx.lineTo(sd * 4.5, -32); ctx.lineTo(sd * 5.5, -26); ctx.closePath(); ctx.fill(); }
+  g = ctx.createRadialGradient(-2, -24, 1, 0, -21, 8.5); g.addColorStop(0, lt); g.addColorStop(0.6, col); g.addColorStop(1, dk);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -21, 7.5, 0, TAU); ctx.fill();
+  ctx.fillStyle = lt; ctx.beginPath(); ctx.ellipse(0, -17.8, 4.2, 2.8, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = dk; ctx.beginPath(); ctx.arc(-1.3, -18.3, 0.55, 0, TAU); ctx.arc(1.3, -18.3, 0.55, 0, TAU); ctx.fill();
+  for (const sx of [-1, 1]) {
+    ctx.fillStyle = '#1a1030'; ctx.beginPath(); ctx.ellipse(sx * 3, -22.5, 1.6, 2.1, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(sx * 3 - 0.5, -23.3, 0.6, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,120,150,0.45)'; ctx.beginPath(); ctx.arc(sx * 5, -19.5, 1.3, 0, TAU); ctx.fill();
+  }
+  ctx.strokeStyle = '#1a1030'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(0, -17, 2, 0.15 * Math.PI, (happy ? 0.85 : 0.6) * Math.PI); ctx.stroke();
+  ctx.restore();
+}
+// uzay balinası (merkezde, +x yönüne bakar)
+function drawWhale(col, face, happy) {
+  ctx.save(); ctx.scale(face >= 0 ? Math.max(0.15, face) : Math.min(-0.15, face), 1);
+  const dk = darken(col, 0.4), lt = lighten(col, 0.5), tw = Math.sin(time * 3) * 0.35;
+  ctx.save(); ctx.translate(-26, -2); ctx.rotate(tw);
+  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(-8, -10, -15, -12); ctx.quadraticCurveTo(-11, -3, -9, 0);
+  ctx.quadraticCurveTo(-11, 3, -15, 12); ctx.quadraticCurveTo(-8, 10, 0, 0); ctx.fill(); ctx.restore();
+  const g = ctx.createLinearGradient(0, -18, 0, 16); g.addColorStop(0, lt); g.addColorStop(0.45, col); g.addColorStop(1, dk);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-26, -2); ctx.quadraticCurveTo(-18, -18, 4, -17); ctx.quadraticCurveTo(26, -16, 28, 2);
+  ctx.quadraticCurveTo(26, 15, 6, 15); ctx.quadraticCurveTo(-14, 14, -26, -2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,248,235,0.85)'; ctx.beginPath(); ctx.moveTo(-14, 8); ctx.quadraticCurveTo(6, 18, 26, 5); ctx.quadraticCurveTo(10, 11, -14, 8); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  for (const [x, y, r] of [[-8, -11, 1.2], [0, -13, 0.9], [8, -12, 1.4], [-14, -6, 0.8], [14, -9, 0.8]]) { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); }
+  ctx.save(); ctx.translate(4, 9); ctx.rotate(0.6 + Math.sin(time * 4) * 0.25); ctx.fillStyle = dk; ctx.beginPath(); ctx.ellipse(0, 3, 3, 7, 0, 0, TAU); ctx.fill(); ctx.restore();
+  ctx.fillStyle = '#1a1030';
+  if (happy) { ctx.strokeStyle = '#1a1030'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(15, -2, 2.2, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); }
+  else { ctx.beginPath(); ctx.arc(15, -3, 2.2, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(14.3, -3.8, 0.8, 0, TAU); ctx.fill(); }
+  ctx.fillStyle = 'rgba(255,120,150,0.45)'; ctx.beginPath(); ctx.arc(19, 2, 2, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#1a1030'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(19, 3, 5, 0.25 * Math.PI, 0.65 * Math.PI); ctx.stroke();
+  ctx.restore();
+}
+// parlayan elmas (merkezde)
+function drawGem(col) {
+  ctx.globalCompositeOperation = 'lighter';
+  const gl2 = ctx.createRadialGradient(0, 0, 0, 0, 0, 16); gl2.addColorStop(0, rgba(col, 0.6)); gl2.addColorStop(1, rgba(col, 0));
+  ctx.fillStyle = gl2; ctx.beginPath(); ctx.arc(0, 0, 16, 0, TAU); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+  const g = ctx.createLinearGradient(-8, -10, 8, 8); g.addColorStop(0, lighten(col, 0.7)); g.addColorStop(0.5, col); g.addColorStop(1, darken(col, 0.35));
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(-9, -2); ctx.lineTo(-5, -8); ctx.lineTo(5, -8); ctx.lineTo(9, -2); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 1; ctx.beginPath();
+  ctx.moveTo(-9, -2); ctx.lineTo(9, -2); ctx.moveTo(0, 10); ctx.lineTo(-3, -2); ctx.lineTo(0, -8); ctx.lineTo(3, -2); ctx.closePath(); ctx.stroke();
+}
+// disko topu (merkezde); spin döndükçe parlayan kareler kayar
+function drawDiscoBall(spin) {
+  ctx.strokeStyle = 'rgba(220,225,235,0.7)'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(0, -40); ctx.stroke();
+  const g = ctx.createRadialGradient(-4, -4, 1, 0, 0, 12); g.addColorStop(0, '#ffffff'); g.addColorStop(0.5, '#ced4da'); g.addColorStop(1, '#6c757d');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 12, 0, TAU); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.arc(0, 0, 12, 0, TAU); ctx.clip();
+  const cols = ['#ffffff', '#a5d8ff', '#fcc2d7', '#fff3bf', '#b2f2bb'];
+  for (let row = -4; row <= 4; row++) for (let c = -6; c <= 6; c++) {
+    const x = ((c * 3 + spin * 6) % 39 + 39) % 39 - 19.5, y = row * 3;
+    if ((row + c) % 2 === 0) { ctx.fillStyle = rgba(cols[(c + row + 20) % cols.length], 0.55); ctx.fillRect(x - 1.2, y - 1.2, 2.4, 2.4); }
+  }
+  ctx.restore();
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.arc(-4, -5, 1.6, 0, TAU); ctx.fill();
+}
+// havai fişek kutusu (taban y=0)
+function drawFwBox(full) {
+  const tubes = [[-6, '#ff6b6b'], [0, '#ffd43b'], [6, '#4dabf7']];
+  for (const [x, c] of tubes) {
+    const g = ctx.createLinearGradient(x - 2.2, 0, x + 2.2, 0); g.addColorStop(0, lighten(c, 0.4)); g.addColorStop(1, darken(c, 0.35));
+    ctx.fillStyle = g; ctx.fillRect(x - 2.2, -17, 4.4, 10);
+    if (full) { ctx.strokeStyle = '#e9ecef'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(x, -17); ctx.quadraticCurveTo(x + 1.5, -20, x + 0.5, -22); ctx.stroke(); }
+  }
+  const bg = ctx.createLinearGradient(0, -9, 0, 0); bg.addColorStop(0, '#b197fc'); bg.addColorStop(1, '#5f3dc4');
+  ctx.fillStyle = bg; ctx.fillRect(-10, -9, 20, 9);
+  ctx.fillStyle = '#ffe066';
+  for (const x of [-6, 0, 6]) { ctx.beginPath(); ctx.arc(x, -4.5, 1.3, 0, TAU); ctx.fill(); }
 }
 function drawHole() {
   ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(0, 0.6, 8.5, 3, 0, 0, TAU); ctx.fill();
@@ -1225,8 +1304,9 @@ const sfx = {
   pop() { tone(900, 0.08, { vol: 0.14, slide: 1800 }); noiseBurst(0.06, 0.2, 'highpass', 2500); },
   grow() { tone(mf(79), 0.25, { vol: 0.1, slide: mf(91) }); },
   whistle() { tone(500, 0.8, { vol: 0.035, slide: 1600 }); },
-  vroom() { tone(85, 1.4, { type: 'sawtooth', vol: 0.06, slide: 240 }); tone(170, 1.4, { type: 'triangle', vol: 0.04, slide: 420 }); noiseBurst(1.4, 0.15, 'lowpass', 300, 1100); },
-  honk() { tone(523, 0.12, { type: 'square', vol: 0.05 }); tone(659, 0.12, { type: 'square', vol: 0.04 }); tone(523, 0.16, { type: 'square', vol: 0.05, delay: 0.2 }); tone(659, 0.16, { type: 'square', vol: 0.04, delay: 0.2 }); },
+  crack() { noiseBurst(0.12, 0.35, 'highpass', 2500); tone(1300, 0.06, { type: 'square', vol: 0.05, slide: 600 }); },
+  whale() { tone(220, 1.1, { vol: 0.13, slide: 330 }); tone(330, 0.9, { vol: 0.08, delay: 0.55, slide: 262 }); tone(660, 0.5, { type: 'triangle', vol: 0.02, delay: 0.3 }); },
+  beat() { [0, 0.25, 0.5, 0.75].forEach((d, i) => { noiseBurst(0.06, 0.28, 'lowpass', 200, 60, d); tone(mf([72, 76, 79, 84][i]), 0.15, { type: 'triangle', vol: 0.08, delay: d }); }); },
   woof() { tone(290, 0.09, { type: 'sawtooth', vol: 0.07, slide: 190 }); noiseBurst(0.08, 0.1, 'lowpass', 900, 300); tone(320, 0.11, { type: 'sawtooth', vol: 0.06, slide: 200, delay: 0.16 }); noiseBurst(0.08, 0.08, 'lowpass', 900, 300, 0.16); },
   note(m) { tone(mf(m), 0.7, { vol: 0.16 }); tone(mf(m + 12), 0.35, { type: 'triangle', vol: 0.05 }); tone(mf(m + 19), 0.2, { vol: 0.02 }); },
   launch() { noiseBurst(2.4, 0.5, 'lowpass', 250, 1200); tone(70, 2.2, { type: 'sawtooth', vol: 0.05, slide: 220 }); },
@@ -1371,10 +1451,24 @@ const zdef = i => ZONES[zidx(i)];
 // pastel bulutsu renkleri: pembe-lila, şeftali-pembe, nane-gök mavisi
 const NEB = [[[.95, .55, .9], [.55, .65, 1]], [[1, .7, .5], [.95, .5, .8]], [[.45, .95, .85], [.55, .75, 1]]];
 const PLANET_TYPES = ['terran', 'lava', 'ice', 'gas', 'rocky', 'desert'];
-const TYPE_ACTS = { terran: ['terran', 'pet', 'car'], lava: ['lava', 'rocket'], ice: ['ice', 'music', 'pet'], gas: ['gas', 'rain', 'music'],
-  rocky: ['rocky', 'rocket', 'car'], desert: ['desert', 'car', 'rocket'] };
-const ACT_ICON = { ice: '⛄', terran: '🌸', lava: '🌋', desert: '💎', gas: '✨', rocky: '🚩', jump: '⭐', car: '🚗', music: '🎵', pet: '🐶', rain: '🌠', rocket: '🚀' };
-const NEED = { ice: 3, terran: 3, lava: 3, desert: 3, gas: 5, rocky: 3, jump: 3, car: 3, music: 8, pet: 4, rain: 6, rocket: 3 };
+// Aktivite havuzu: her biri ayrı bir oyun. Liste = sadece bu gezegen türlerinde olur; 0 = her gezegende olabilir.
+// Gezegene uyanlar arasından rastgele seçilir; son oynanan 6 aktivite tekrar gelmez.
+const ACT_FITS = { ice: ['ice', 'rocky', 'terran'], terran: ['terran', 'desert', 'rocky', 'ice'], lava: ['lava', 'rocky'], desert: ['desert', 'rocky'],
+  jump: ['rocky', 'ice', 'desert'], gas: 0, rocky: 0, music: 0, pet: 0, rain: 0, rocket: 0, egg: 0, fw: 0, whale: 0, web: 0, dance: 0 };
+const ACT_ICON = { ice: '⛄', terran: '🌸', lava: '🌋', desert: '💎', gas: '✨', rocky: '🚩', jump: '⭐', music: '🎵', pet: '🐶', rain: '🌠', rocket: '🚀',
+  egg: '🥚', fw: '🎆', whale: '🐋', web: '🕸️', dance: '💃' };
+const NEED = { ice: 3, terran: 3, lava: 3, desert: 3, gas: 4, rocky: 3, jump: 3, music: 6, pet: 3, rain: 5, rocket: 3, egg: 3, fw: 4, whale: 3, web: 4, dance: 3 };
+let recentActs = [];
+function nextAct(type) {
+  const pool = Object.keys(ACT_FITS).filter(k => !ACT_FITS[k] || (type && ACT_FITS[k].includes(type)));
+  let fresh = pool.filter(k => !recentActs.includes(k));
+  if (!fresh.length) fresh = pool;
+  const k = pick(fresh);
+  recentActs.push(k); if (recentActs.length > 6) recentActs.shift();
+  return k;
+}
+const DRAGON_COLS = ['#69db7c', '#f783ac', '#74c0fc', '#b197fc', '#ffa94d'];
+const GEM_COLS = ['#66d9e8', '#f783ac', '#ffd43b', '#8ce99a', '#b197fc'];
 const CRYSTAL_COLS = ['#ff6b8a', '#ffa94d', '#ffe066', '#69db7c', '#4dabf7'];
 const CRYSTAL_NOTES = [72, 74, 76, 79, 81];
 const MELODY = [0, 0, 3, 3, 4, 4, 3];
@@ -1409,7 +1503,7 @@ const qb = (p0, p1, p2, t) => ({ x: (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t *
 
 /* ================= DÜNYA ÜRETİMİ ================= */
 function makeAnchor(x, y, row) {
-  const type = pick(PLANET_TYPES), act = row > 1 && Math.random() < 0.55 ? pick(TYPE_ACTS[type]) : null;
+  const type = pick(PLANET_TYPES), act = row > 1 && Math.random() < 0.5 ? nextAct(type) : null;
   return { x, y, r: (act ? rand(42, 48) : rand(34, 40)) * K, row, type, p: planetParams(type), act, deco: null, squash: 0 };
 }
 function spawnRow() {
@@ -1426,7 +1520,7 @@ function spawnRow() {
   let row;
   if (isLM) {
     const z = rowCount / RPZ, d = zdef(z);
-    row = [{ x: W * (0.5 + rand(-0.06, 0.06)), y, r: 92 * K, row: rowCount, type: d.p, p: planetParams(d.p), act: d.act, landmark: z, deco: null, squash: 0 }];
+    row = [{ x: W * (0.5 + rand(-0.06, 0.06)), y, r: 92 * K, row: rowCount, type: d.p, p: planetParams(d.p), act: d.p === 'moon' ? 'jump' : nextAct(null), landmark: z, deco: null, squash: 0 }];
   } else {
     let xs;
     if (rowCount > 2 && !prevLM && Math.random() < 0.35) xs = [rand(0.18, 0.38) * W, rand(0.62, 0.82) * W];
@@ -1503,11 +1597,27 @@ function launchFireworks(n) {
   for (let i = 0; i < n; i++) rockets.push({ x: rand(0.12, 0.88) * W, y: camY + H + 20 * K, vx: rand(-40, 40) * K, vy: -rand(820, 1000) * K,
     ty: camY + rand(0.12, 0.45) * H, col: pick(FW_COLS), delay: i * 0.33, launched: false });
 }
+// şekiller: 'burst' (dağınık), 'ring' (halka), 'heart' (kalp), 'star' (yıldız), 'smile' (gülen yüz)
 function explode(r) {
-  const n = 90, ring = Math.random() < 0.3, sp = rand(260, 380) * K, col2 = pick(FW_COLS);
+  const n = 90, shape = r.shape || (Math.random() < 0.3 ? 'ring' : 'burst'), sp = rand(260, 380) * K, col2 = pick(FW_COLS);
+  const drawn = shape !== 'burst' && shape !== 'ring';   // şekil bozulmasın diye bunlarda yerçekimi az
   for (let i = 0; i < n; i++) {
-    const a = i / n * TAU + rand(-0.05, 0.05), s = ring ? sp : sp * Math.sqrt(Math.random());
-    addP({ x: r.x, y: r.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, max: rand(1.3, 2.2), col: Math.random() < 0.25 ? col2 : r.col, size: rand(1.8, 3.2) * K, g: 90 * K, drag: 1.3, tw: Math.random() < 0.5 });
+    const t = i / n * TAU;
+    let vx, vy;
+    if (shape === 'heart') {
+      vx = 16 * Math.sin(t) ** 3 / 16 * sp;
+      vy = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) / 16 * sp;
+    } else if (shape === 'star') {
+      const rr = sp * (0.55 + 0.45 * Math.cos(5 * t)); vx = Math.cos(t - Math.PI / 2) * rr; vy = Math.sin(t - Math.PI / 2) * rr;
+    } else if (shape === 'smile') {
+      if (i < 50) { const u = i / 50 * TAU; vx = Math.cos(u) * sp; vy = Math.sin(u) * sp; }
+      else if (i < 70) { const e = i < 60 ? -1 : 1; vx = (e * 0.35 + rand(-0.05, 0.05)) * sp; vy = (-0.3 + rand(-0.05, 0.05)) * sp; }
+      else { const u = lerp(0.2, 0.8, (i - 70) / 20) * Math.PI; vx = Math.cos(u) * 0.55 * sp; vy = Math.sin(u) * 0.55 * sp; }
+    } else {
+      const s = shape === 'ring' ? sp : sp * Math.sqrt(Math.random()), a = t + rand(-0.05, 0.05);
+      vx = Math.cos(a) * s; vy = Math.sin(a) * s;
+    }
+    addP({ x: r.x, y: r.y, vx, vy, max: rand(1.3, 2.2), col: Math.random() < 0.25 ? col2 : r.col, size: rand(1.8, 3.2) * K, g: (drawn ? 35 : 90) * K, drag: 1.3, tw: Math.random() < 0.5 });
   }
   addP({ x: r.x, y: r.y, vx: 0, vy: 0, max: 0.25, col: '#ffffff', size: 60 * K });
   flash = Math.max(flash, 0.12);
@@ -1582,8 +1692,6 @@ function beginZip(a) {
   if (a === hero.anchor) return;
   // tempo: ıslak uzaylı kurulanmadan ya da gezegendeki iş bitmeden yola çıkılmaz
   if (aliens.some(al => al.near && al.state === 'wet')) { nudgeLock(); remind('dry_wait'); return; }
-  const act = hero.activity;
-  if (act && act === hero.anchor && act.deco && !act.deco.done) { nudgeLock(); remind('act_wait'); return; }
   hero.state = 'shoot';
   hero.zip = { target: a, st: 0, t: 0 };
   hero.activity = null;
@@ -1617,7 +1725,7 @@ function actPos(a, arc, up = 0) {
   const r = a.r * sqScale(a), ang = -Math.PI / 2 + arc / r;
   return { x: a.x + Math.cos(ang) * (r * 0.97 + up), y: a.y + Math.sin(ang) * (r * 0.97 + up), ang };
 }
-const DECO_ARC = { ice: 33, terran: [-32, 30, 50], lava: 36, desert: 32, rocky: -30, pet: 38, rocket: 36, car: 36 };
+const DECO_ARC = { ice: 33, lava: 36, desert: 32, rocky: -30, pet: 38, rocket: 36, egg: 36, fw: 34 };
 function bubblePos(a, b, i) {
   const r = a.r * sqScale(a), ang = -Math.PI / 2 + ((i - 2) * 34 * K) / r;
   const dd = r + (48 + (i % 2) * 22 + Math.sin(time * 1.5 + b.off) * 8) * K;
@@ -1628,11 +1736,6 @@ function crystalPos(a, i) {
   const dd = r + (i === 2 ? 112 : 92) * K + Math.sin(time * 2 + i) * 4 * K;
   return { x: a.x + Math.cos(ang) * dd, y: a.y + Math.sin(ang) * dd };
 }
-function carAngle(a, d) {
-  if (!d.driveT) { const r = a.r * sqScale(a); return -Math.PI / 2 + DECO_ARC.car * K / r; }
-  return lerp(d.carFrom, d.carTo, ease(clamp((time - d.driveT) / d.driveDur, 0, 1)));
-}
-const carDriving = d => d.driveT && time - d.driveT < d.driveDur;
 function rocketPos(d) { const t = time - d.launchT; return { x: d.base.x, y: d.base.y - (80 * t + 330 * t * t) * K }; }
 function hearts(x, y, n) {
   for (let i = 0; i < n; i++) addP({ x: x + rand(-8, 8) * K, y, vx: rand(-45, 45) * K, vy: rand(-120, -60) * K, max: rand(0.9, 1.4), col: pick(['#ff6b9a', '#ff8fab', '#f06595']), size: rand(6, 10) * K, drag: 0.8, add: false, kind: 'heart' });
@@ -1645,8 +1748,14 @@ function startActivity(a) {
   switch (d.type) {
     case 'gas': if (!d.bubbles) d.bubbles = Array.from({ length: NEED.gas }, () => ({ off: rand(0, TAU), popped: false })); break;
     case 'music': if (!d.glow) d.glow = [0, 0, 0, 0, 0]; break;
-    case 'car': d.driveT = 0; break;
     case 'rain': d.until = time + 9; d.spawnT = time + 0.8; break;
+    case 'terran': d.arcs = d.arcs || []; break;
+    case 'egg': d.col = d.col || pick(DRAGON_COLS); d.wob = 0; break;
+    case 'fw': d.lastFw = -9; break;
+    case 'dance': d.inT = time; break;
+    case 'web': d.gems = d.gems || []; d.spawnT = time + 0.8; break;
+    case 'whale': if (!d.whale) d.whale = { x: a.x - W * 0.7, y: a.y - a.r - 150 * K, ph: rand(0, 6), face: 1, inT: time, spout: -9, alpha: 1,
+      col: pick(['#74c0fc', '#b197fc', '#f783ac', '#63e6be']) }; break;
     case 'pet': d.jump = 0; d.petT = -9; break;
   }
   if (MINI[d.type] && !d.items) { d.items = d.type === 'lava' ? [] : makeItems(a, d); d.nextBlob = time + 0.8; }
@@ -1706,12 +1815,69 @@ function activityTap(wx, wy, itemOnly) {
         if (!s.got && dist(wx, wy, s.x, s.y) < 44 * K) { s.got = true; d.n++; addStar(s.x, s.y); if (d.n >= NEED.rain) finishActivity(a); return true; }
       }
       return !itemOnly && own;
+    case 'terran': {   // gezegenin neresine dokunulursa çiçek orada açar
+      if (itemOnly || dist(wx, wy, a.x, a.y) > a.r * 1.7) return false;
+      const r = a.r * sqScale(a);
+      let off = Math.atan2(wy - a.y, wx - a.x) + Math.PI / 2;
+      off = ((off + Math.PI) % TAU + TAU) % TAU - Math.PI;
+      off = clamp(off, -1.25, 1.25);
+      if (Math.abs(off) < 0.42) off = off < 0 ? -0.42 : 0.42;   // kahramanın tam altına değil
+      d.arcs.push(off * r / K);
+      miniProgress(a, actPos(a, off * r, 6 * K));
+      return true;
+    }
+    case 'egg': {
+      if (itemOnly || !own) return false;
+      if (d.hatchT) return true;
+      const p = actPos(a, DECO_ARC.egg * K, 16 * K);
+      d.n++; d.wob = 1; sfx.crack(); hero.happy = 1;
+      for (let i = 0; i < 8; i++) addP({ x: p.x, y: p.y, vx: rand(-90, 90) * K, vy: rand(-140, -40) * K, max: 0.7, col: pick(['#fff9db', '#ffe8cc', '#ffffff']), size: rand(1.5, 3) * K, g: 300 * K, add: false, kind: 'snow' });
+      if (d.n >= NEED.egg) { d.hatchT = time; sfx.sparkle(); sparkle(p.x, p.y, 30, ['#ffe066', '#ffffff', d.col], 1.2); hearts(p.x, p.y, 6); }
+      return true;
+    }
+    case 'fw': {
+      if (itemOnly || !own) return false;
+      if (time - d.lastFw < 0.35 || d.n >= NEED.fw) return true;
+      d.lastFw = time; d.n++;
+      const p = actPos(a, DECO_ARC.fw * K, 10 * K);
+      rockets.push({ x: p.x, y: p.y, vx: rand(-70, 70) * K, vy: -rand(720, 860) * K, ty: camY + rand(0.12, 0.35) * H, col: pick(FW_COLS), delay: 0, launched: false,
+        shape: pick(['heart', 'star', 'ring', 'burst', 'smile']) });
+      hero.happy = 1.5;
+      return true;
+    }
+    case 'whale': {
+      const w = d.whale;
+      if (w && !d.leaveT && dist(wx, wy, w.x, w.y) < 75 * K) {
+        d.n++; w.spout = time; sfx.whale(); hearts(w.x, w.y - 20 * K, 5); hero.happy = 1.5;
+        if (d.n >= NEED.whale) d.leaveT = time + 1.2;
+        return true;
+      }
+      return !itemOnly && own;
+    }
+    case 'web':
+      for (const g of d.gems) if (!g.grabbed && dist(wx, wy, g.x, g.y) < 50 * K) { shootGrab(g, 'gem'); return true; }
+      return !itemOnly && own;
+    case 'dance': {
+      if (itemOnly || !own) return false;
+      if (time < (hero.danceUntil || 0) || d.n >= NEED.dance) return true;
+      d.n++; d.danceT = time; hero.danceUntil = time + 1.2; sfx.beat(); hero.happy = 2;
+      sparkle(hero.x, hero.y - 30 * K, 16, ['#ff6b9a', '#ffe066', '#74c0fc', '#8ce99a']);
+      return true;
+    }
   }
   return false;
 }
+// ağla yakalanan elmas kahramana ulaştı
+function gemCaught(gm) {
+  gm.got = true;
+  sfx.sparkle(); sparkle(gm.x, gm.y, 18, [gm.col, '#ffffff']);
+  addScore(5, gm.x, gm.y);
+  const a = hero.activity;
+  if (a && a.deco && a.deco.type === 'web' && !a.deco.done) { a.deco.n++; if (a.deco.n >= NEED.web) finishActivity(a); }
+}
 /* ================= MİNİ OYUNLAR ================= */
 // Gezegene üst üste basmak yerine: etrafta süzülen / yuvarlanan / fışkıran parçaları bul ve dokun.
-const MINI = { ice: 'surface', terran: 'float', lava: 'lava', desert: 'mound', rocky: 'float', jump: 'jump', rocket: 'float', car: 'gem', pet: 'float' };
+const MINI = { ice: 'surface', lava: 'lava', desert: 'mound', rocky: 'float', jump: 'jump', rocket: 'float', pet: 'float' };
 const ROCKET_PARTS = ['body', 'fins', 'nose'];   // drawMiniRocket aşamalarıyla aynı sıra
 const MOUND_OFF = [-0.95, -2.05, 2.05];          // kum tepecikleri (hazine sandığının ve kahramanın yerinden uzakta)
 const miniActive = () => { const a = hero.activity; return !!(a && a === hero.anchor && a.deco && !a.deco.done); };
@@ -1723,7 +1889,6 @@ function makeItems(a, d) {
     if (MINI[d.type] === 'float') { it.spd = rand(0.32, 0.46); it.side = i % 2 ? 1 : -1; it.rr = 80 + Math.floor(i / 2) * 45 + rand(0, 8); }
     if (MINI[d.type] === 'surface') it.spd = rand(0.35, 0.5);
     if (d.type === 'desert') it.off = MOUND_OFF[i];
-    if (d.type === 'car') it.ang = carAngle(a, d) + (i + 1) * TAU / (NEED.car + 1);
     if (d.type === 'jump') it.h = 125 + i * 55;
     items.push(it);
   }
@@ -1737,7 +1902,6 @@ function itemPos(a, d, it) {
       const q = at(it.side * (0.55 + 0.5 * (0.5 + 0.5 * Math.sin(time * it.spd + it.ph))), it.rr * K); q.y += Math.sin(time * 2 + it.ph) * 5 * K; return q; }
     case 'surface': return at(Math.sin(time * it.spd + it.ph) * 2.3, 9 * K);
     case 'mound': return at(it.off, 1 * K);
-    case 'gem': return { x: a.x + Math.cos(it.ang) * (r + 16 * K), y: a.y + Math.sin(it.ang) * (r + 16 * K) + Math.sin(time * 3 + it.i) * 3 * K, ang: it.ang };
     case 'jump': { const lp = landPoint(a); return { x: lp.x + Math.sin(time * 0.9 + it.ph) * 18 * K, y: lp.y - it.h * K }; }
     case 'lava': return { x: it.x, y: it.y };
   }
@@ -1746,7 +1910,6 @@ function itemPos(a, d, it) {
 function miniTarget(a, d, slot) {
   switch (d.type) {
     case 'ice': return actPos(a, DECO_ARC.ice * K, (8 + slot * 12) * K);
-    case 'terran': return actPos(a, DECO_ARC.terran[Math.min(slot, 2)] * K, 6 * K);
     case 'rocky': return actPos(a, DECO_ARC.rocky * K, 30 * K);
     case 'rocket': return actPos(a, DECO_ARC.rocket * K, 14 * K);
     case 'pet': return actPos(a, DECO_ARC.pet * K, 18 * K);
@@ -1757,13 +1920,6 @@ function takeItem(a, d, it) {
   switch (d.type) {
     case 'desert': it.got = true; miniProgress(a, p); return;
     case 'lava': it.taken = true; it.coolT = time; jets.push({ target: it, t: 0, dur: 0.45 }); sfx.water(); return;
-    case 'car': {
-      if (carDriving(d)) return;
-      const cur = carAngle(a, d), delta = ((it.ang - cur) % TAU + TAU) % TAU;
-      d.carFrom = cur; d.carTo = cur + delta; d.driveT = time; d.driveDur = 0.6 + delta * 0.45; d.driveGem = it;
-      it.taken = true; sfx.vroom(); hero.happy = 2;
-      return;
-    }
     case 'jump': {
       if (hero.state === 'jump') return;
       const lp = landPoint(a), headOff = -(BD.helmC[1] - BD.helm) * HS, h = Math.max(40 * K, (lp.y - p.y) - headOff);
@@ -1794,7 +1950,6 @@ function miniProgress(a, p) {
     case 'rocky': sfx.whistle(); sparkle(p.x, p.y, 14, ['#ffffff', '#ff8787', '#ffe066']); break;
     case 'rocket': sfx.grow(); sparkle(p.x, p.y, 12, ['#ffffff', '#ff8787', '#a5d8ff']); break;
     case 'pet': d.jump = 1; d.petT = time; sfx.woof(); hearts(p.x, p.y, 6); break;
-    case 'car': sfx.honk(); sparkle(p.x, p.y, 20, ['#99e9f2', '#ffffff', '#74c0fc']); break;
     case 'jump': sfx.ding(d.n); sparkle(p.x, p.y, 20, ['#ffe066', '#ffffff', '#ffd43b']); break;
   }
   if (d.n >= NEED[d.type]) {
@@ -1807,7 +1962,6 @@ function updateMini(dt) {
   if (!miniActive() || !MINI[a.deco.type]) return;
   const d = a.deco;
   for (const it of d.items) if (it.flyT && !it.got && time - it.flyT >= 0.55) { it.got = true; miniProgress(a, it.to); }
-  if (d.type === 'car' && d.driveGem && !carDriving(d)) { const g = d.driveGem; d.driveGem = null; g.got = true; miniProgress(a, itemPos(a, d, g)); }
   if (d.type === 'lava') {
     // yanardağdan yavaşça lav topları fışkırır; dokununca su sıkılır, soğuyup taşa döner
     const live = d.items.filter(it => !it.dead && !it.got);
@@ -1839,6 +1993,7 @@ function finishActivity(a) {
   if (hero.activity === a) hero.activity = null;
   const p = actPos(a, 0, 30 * K);
   if (d.type === 'pet') { const pp = actPos(a, DECO_ARC.pet * K, 15 * K); friends.push({ x: pp.x, y: pp.y, pet: true, ph: rand(0, 6) }); hearts(pp.x, pp.y, 10); }
+  if (d.type === 'egg') { const pp = actPos(a, DECO_ARC.egg * K, 22 * K); friends.push({ x: pp.x, y: pp.y, dragon: true, col: d.col, ph: rand(0, 6) }); hearts(pp.x, pp.y, 8); }
   setTimeout(() => {
     const onEnd = a.landmark !== undefined ? () => { if (hero.anchor === a) hero.goAt = rt() + 0.3; } : null;
     speak('done_' + d.type, { wait: 5, valid: () => hero.anchor === a, onEnd });
@@ -1982,7 +2137,9 @@ function update(dt) {
       }
     }
     hero.x = lp.x; hero.y = lp.y + (hero.state === 'jump' ? hero.jOff : 0);
-    hero.angle = lerpAngle(hero.angle, 0, Math.min(1, dt * 8));
+    if (hero.state === 'sit' && time < (hero.danceUntil || 0)) {   // dans: zıp zıp ve sağa sola sallanma
+      const t = time * 9; hero.y -= Math.abs(Math.sin(t)) * 16 * K; hero.angle = Math.sin(t * 1.3) * 0.28;
+    } else hero.angle = lerpAngle(hero.angle, 0, Math.min(1, dt * 8));
   }
   if (hero.state === 'shoot') {
     hero.zip.st += dt;
@@ -2051,11 +2208,38 @@ function update(dt) {
   const act = hero.activity;
   if (act && act.deco && !act.deco.done) {
     const d = act.deco;
-    if (d.type === 'car') {
-      if (carDriving(d)) {
-        const ang = carAngle(act, d), r = act.r * sqScale(act);
-        if (Math.random() < 0.7) dust(act.x + Math.cos(ang) * r, act.y + Math.sin(ang) * r, 1, '#e9e2d8');
+    if (d.type === 'whale') {
+      const w = d.whale;
+      if (!d.leaveT || time < d.leaveT) {   // gezegenin üstünde ağır ağır bir sağa bir sola yüzer
+        const tx = act.x + Math.sin(time * 0.4 + w.ph) * W * 0.28, ty = act.y - act.r - 150 * K + Math.sin(time * 0.9 + w.ph) * 14 * K;
+        const k = Math.min(1, dt * 1.5), nx = w.x + (tx - w.x) * k;
+        if (Math.abs(nx - w.x) > 0.02 * K) w.face += ((nx > w.x ? 1 : -1) - w.face) * Math.min(1, dt * 3);
+        w.x = nx; w.y += (ty - w.y) * k;
+      } else {                               // teşekkür edip uzaklaşır
+        const t = time - d.leaveT, dir = w.face >= 0 ? 1 : -1;
+        w.x += dir * 170 * K * dt; w.y -= 80 * K * dt; w.alpha = clamp(1 - t / 1.6, 0, 1);
+        if (t > 1.6) finishActivity(act);
       }
+      if (time - w.spout < 0.8) for (let i = 0; i < 3; i++) addP({ x: w.x + w.face * 6 * 1.6 * K, y: w.y - 17 * 1.6 * K, vx: rand(-50, 50) * K, vy: -rand(160, 260) * K, max: rand(0.6, 1), col: pick(['#d0ebff', '#a5d8ff', '#ffffff', '#fff3bf']), size: rand(1.6, 3.2) * K, g: 330 * K, add: false, kind: 'drop' });
+    } else if (d.type === 'web') {
+      const flying = d.gems.filter(g => !g.grabbed).length, pending = d.gems.filter(g => g.grabbed && !g.got).length;
+      if (time >= d.spawnT && flying < 2 && d.n + pending < NEED.web) {
+        const left = Math.random() < 0.5, y = hero.y - rand(80, 230) * K;
+        d.gems.push({ x: left ? -30 * K : W + 30 * K, y, by: y, vx: (left ? 1 : -1) * rand(90, 130) * K, ph: rand(0, 6), col: pick(GEM_COLS), got: false });
+        d.spawnT = time + rand(1.0, 1.7);
+      }
+      for (const g of d.gems) {
+        if (g.grabbed) continue;
+        g.x += g.vx * dt; g.y = g.by + Math.sin(time * 2.5 + g.ph) * 12 * K;
+        if (Math.random() < 0.4) addP({ x: g.x, y: g.y, vx: -g.vx * 0.2, vy: rand(-15, 15) * K, max: 0.5, col: pick([g.col, '#ffffff']), size: rand(1.2, 2.4) * K, drag: 1 });
+      }
+      d.gems = d.gems.filter(g => g.grabbed ? !g.got : g.x > -60 * K && g.x < W + 60 * K);
+    } else if (d.type === 'egg') {
+      if (d.hatchT && time - d.hatchT > 1.3) finishActivity(act);
+    } else if (d.type === 'dance') {
+      if (d.n >= NEED.dance && time - d.danceT > 1.4) finishActivity(act);
+    } else if (d.type === 'fw') {
+      if (d.n >= NEED.fw && time - d.lastFw > 1.8) finishActivity(act);
     } else if (d.type === 'rain') {
       if (time >= d.spawnT && time < d.until) {
         d.spawnT = time + rand(0.35, 0.6);
@@ -2076,6 +2260,7 @@ function update(dt) {
     if (!d) continue;
     if (d.glow) for (let i = 0; i < 5; i++) d.glow[i] = Math.max(0, d.glow[i] - dt * 2.5);
     if (d.jump) d.jump = Math.max(0, d.jump - dt * 2.5);
+    if (d.wob) d.wob = Math.max(0, d.wob - dt * 3);
     if (d.type !== 'rocket' || !d.launchRt || !d.cdStart || d.done) continue;
     if (!d.launchT) {
       const fr = (now - d.cdStart) / Math.max(0.1, d.launchRt - d.cdStart), num = fr < 0.33 ? 3 : fr < 0.66 ? 2 : 1;
@@ -2111,6 +2296,7 @@ function update(dt) {
       if (g.t >= 0.35) {
         g.done = true;
         if (g.kind === 'star') { g.obj.got = true; addStar(g.obj.x, g.obj.y); }
+        else if (g.kind === 'gem') gemCaught(g.obj);
         else addFriend(g.obj);
       }
     }
@@ -2234,7 +2420,10 @@ function update(dt) {
       if (d.type === 'gas') { const i = d.bubbles.findIndex(b => !b.popped); if (i >= 0) { const p = bubblePos(act, d.bubbles[i], i); hintPos = { x: p.x, y: p.y, r: 22 * K }; } }
       else if (d.type === 'music') { if (!d.melodyT) { const i = Math.floor(time * 0.8) % 5, p = crystalPos(act, i); hintPos = { x: p.x, y: p.y, r: 18 * K }; } }
       else if (d.type === 'rain') { const s = fallStars.find(s => !s.got && s.y > camY + H * 0.15); if (s) hintPos = { x: s.x, y: s.y, r: 18 * K }; }
-      else if (MINI[d.type] && d.items && !carDriving(d) && hero.state !== 'jump') {
+      else if (d.type === 'whale') { const w = d.whale; if (w && !d.leaveT) hintPos = { x: w.x, y: w.y, r: 40 * K }; }
+      else if (d.type === 'web') { const g = d.gems.find(g => !g.grabbed && g.x > 30 * K && g.x < W - 30 * K); if (g) hintPos = { x: g.x, y: g.y, r: 20 * K }; }
+      else if (['terran', 'egg', 'fw', 'dance'].includes(d.type)) { if (!d.hatchT) hintPos = { x: act.x, y: act.y, r: act.r }; }
+      else if (MINI[d.type] && d.items && hero.state !== 'jump') {
         const it = d.items.find(o => !o.taken && !o.got && !o.dead);
         if (it) { const p = itemPos(act, d, it); hintPos = { x: p.x, y: p.y, r: 20 * K }; }
       }
@@ -2543,13 +2732,6 @@ function drawMiniItem(d, it, p, s) {
       ctx.fillStyle = '#f2d39a'; ctx.beginPath(); ctx.ellipse(-3, -4, 6, 3, -0.2, 0, TAU); ctx.fill();
       ctx.globalAlpha = 0.6 + 0.4 * Math.sin(time * 4 + it.ph); bevelStar(4, -12, 4, time, GOLD); ctx.globalAlpha = 1;
       break;
-    case 'car': { // elmas
-      ctx.rotate(p.ang + Math.PI / 2 + wob * 0.3);
-      const g = ctx.createLinearGradient(-8, -10, 8, 8); g.addColorStop(0, '#e3fafc'); g.addColorStop(0.5, '#66d9e8'); g.addColorStop(1, '#1c7ed6');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(-9, -2); ctx.lineTo(-5, -8); ctx.lineTo(5, -8); ctx.lineTo(9, -2); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-9, -2); ctx.lineTo(9, -2); ctx.moveTo(0, 10); ctx.lineTo(-3, -2); ctx.lineTo(0, -8); ctx.lineTo(3, -2); ctx.closePath(); ctx.stroke();
-      break;
-    }
     case 'pet': // kemik
       ctx.rotate(wob + 0.4); ctx.fillStyle = '#fff8e6'; ctx.strokeStyle = '#d9c7a3'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.rect(-8, -2.6, 16, 5.2); ctx.fill();
@@ -2564,7 +2746,54 @@ function drawDeco(a) {
   if (!d) return;
   switch (d.type) {
     case 'ice': inDeco(a, DECO_ARC.ice * K, 0, () => drawSnowman(d.t.map(t => time - t))); break;
-    case 'terran': for (let i = 0; i < d.t.length; i++) inDeco(a, DECO_ARC.terran[i] * K, 0, () => drawFlower(ease(clamp((time - d.t[i]) / 0.6, 0, 1)), d.cols[i])); break;
+    case 'terran': for (let i = 0; i < d.t.length; i++) inDeco(a, d.arcs[i] * K, 0, () => (ctx.scale(1.4, 1.4), drawFlower)(ease(clamp((time - d.t[i]) / 0.6, 0, 1)), d.cols[i % 3])); break;
+    case 'egg': if (!d.done) inDeco(a, DECO_ARC.egg * K, 0, () => (ctx.scale(1.5, 1.5), drawEgg)(d.n, d.wob, d.hatchT ? time - d.hatchT : 0, d.col)); break;
+    case 'fw': inDeco(a, DECO_ARC.fw * K, 0, () => (ctx.scale(1.3, 1.3), drawFwBox)(d.done ? 0 : 1)); break;
+    case 'whale': {
+      const w = d.whale;
+      if (!w || d.done) break;
+      const s = K * 1.6, al = Math.min(w.alpha, clamp((time - w.inT) / 0.8, 0, 1));
+      ctx.save(); ctx.globalAlpha = al;
+      if (time - w.spout < 0.8) {   // su fıskiyesi
+        const bx = w.x + w.face * 6 * s, by = w.y - 17 * s, hgt = 60 * K * Math.sin(clamp((time - w.spout) / 0.8, 0, 1) * Math.PI);
+        ctx.globalCompositeOperation = 'lighter';
+        const g = ctx.createLinearGradient(bx, by - hgt, bx, by);
+        g.addColorStop(0, 'rgba(200,235,255,0)'); g.addColorStop(1, 'rgba(200,235,255,0.7)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(bx - 3 * K, by); ctx.quadraticCurveTo(bx - 10 * K, by - hgt * 0.7, bx, by - hgt); ctx.quadraticCurveTo(bx + 10 * K, by - hgt * 0.7, bx + 3 * K, by); ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      ctx.translate(w.x, w.y + Math.sin(time * 1.6) * 3 * K); ctx.scale(s, s); drawWhale(w.col, w.face, time - w.spout < 1.2);
+      ctx.restore();
+      if (!d.leaveT) {
+        const q = (time * 1.1) % 1;
+        ctx.strokeStyle = `rgba(255,224,102,${0.5 * (1 - q)})`; ctx.lineWidth = 2.5 * K;
+        ctx.beginPath(); ctx.arc(w.x, w.y, (52 + q * 22) * K, 0, TAU); ctx.stroke();
+      }
+      break;
+    }
+    case 'web':
+      if (d.gems) for (const g of d.gems) {
+        if (g.got) continue;
+        if (!g.grabbed) { const q = (time * 1.4 + g.ph) % 1; ctx.strokeStyle = `rgba(255,255,255,${0.55 * (1 - q)})`; ctx.lineWidth = 2 * K; ctx.beginPath(); ctx.arc(g.x, g.y, (20 + q * 16) * K, 0, TAU); ctx.stroke(); }
+        ctx.save(); ctx.translate(g.x, g.y); ctx.scale(K * 1.5, K * 1.5); ctx.rotate(Math.sin(time * 3 + g.ph) * 0.3); drawGem(g.col); ctx.restore();
+      }
+      break;
+    case 'dance': {
+      if (d.done) break;
+      const lp = landPoint(a), drop = 1 - ease(clamp((time - d.inT) / 0.8, 0, 1));
+      const bx = lp.x, by = lp.y - 150 * K - drop * 140 * K, party = time < (hero.danceUntil || 0);
+      ctx.globalCompositeOperation = 'lighter';   // dönen renkli ışıklar
+      for (let i = 0; i < 6; i++) {
+        const an = time * (party ? 2.2 : 0.8) + i * TAU / 6, col = ['#ff6b9a', '#ffe066', '#74c0fc', '#8ce99a', '#da77f2', '#ffa94d'][i];
+        const ex = bx + Math.cos(an) * 170 * K, ey = by + Math.abs(Math.sin(an)) * 170 * K + 40 * K;
+        const g = ctx.createLinearGradient(bx, by, ex, ey); g.addColorStop(0, rgba(col, party ? 0.4 : 0.18)); g.addColorStop(1, rgba(col, 0));
+        ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(bx, by);
+        ctx.lineTo(ex - Math.sin(an) * 22 * K, ey + Math.cos(an) * 22 * K); ctx.lineTo(ex + Math.sin(an) * 22 * K, ey - Math.cos(an) * 22 * K); ctx.closePath(); ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.save(); ctx.translate(bx, by); ctx.scale(K * 1.5, K * 1.5); drawDiscoBall(time * (party ? 4 : 1.2)); ctx.restore();
+      break;
+    }
     case 'lava': inDeco(a, DECO_ARC.lava * K, 0, () => drawVolcano(clamp(d.n / NEED.lava, 0, 1))); break;
     case 'desert': inDeco(a, DECO_ARC.desert * K, 0, () => drawTreasure(d.n, NEED.desert, d.done ? time - d.doneT : 0)); break;
     case 'rocky': if (d.done) inDeco(a, DECO_ARC.rocky * K, 0, () => drawFlag((time - d.doneT) / 0.6, CHARS[CH.key].label)); break;
@@ -2579,13 +2808,6 @@ function drawDeco(a) {
         ctx.restore();
       }
       break;
-    case 'car': {
-      const ang = carAngle(a, d), r = a.r * sqScale(a), s = K * 1.7, drive = carDriving(d);
-      ctx.save(); ctx.translate(a.x + Math.cos(ang) * r * 0.98, a.y + Math.sin(ang) * r * 0.98); ctx.rotate(ang + Math.PI / 2); ctx.scale(s, s);
-      drawSpaceCar(ang * r / (4.4 * s), drive ? Math.abs(Math.sin(time * 25)) * 0.8 : 0);
-      ctx.restore();
-      break;
-    }
     case 'pet':
       if (!d.done) inDeco(a, DECO_ARC.pet * K, 0, () => { ctx.scale(-1, 1); drawPuppy(1.25, Math.sin(d.jump * Math.PI) * 10, time - d.petT < 1.2); });
       break;
@@ -2670,7 +2892,8 @@ function drawHint() {
   ctx.fillText('👆', a.x + 8 * K, a.y + a.r * 0.4 + Math.abs(Math.sin(time * 5)) * 14 * K);
 }
 function heroOpts() {
-  return { x: hero.x, y: hero.y, angle: hero.angle, s: HS, state: hero.state, onEarth: hero.onEarth,
+  const dancing = hero.state === 'sit' && time < (hero.danceUntil || 0);
+  return { x: hero.x, y: hero.y, angle: hero.angle, s: HS, state: dancing ? 'jump' : hero.state, onEarth: hero.onEarth,
     happy: hero.happy > 0 || hero.state === 'zip' || hero.state === 'jump' || (time % 6) < 4.5, blink: (time % 3.7) < 0.13, crown: hero.crown,
     wave: hero.wave > 0 || (hero.state === 'sit' && (time % 9) < 1.2) };
 }
@@ -2769,6 +2992,7 @@ function render2D() {
   for (let i = Math.min(6, friends.length) - 1; i >= 0; i--) {
     const f = friends[i];
     if (f.pet) { ctx.save(); ctx.translate(f.x, f.y + 14 * K); ctx.scale(K * 1.25, K * 1.25); drawPuppy(1, Math.sin(time * 4 + f.ph) * 1.5, true); ctx.restore(); }
+    else if (f.dragon) { ctx.save(); ctx.translate(f.x, f.y + 14 * K); ctx.scale(K * 1.3, K * 1.3); drawDragon(f.col, true); ctx.restore(); }
     else drawAlien(f.x, f.y, 0.8 * K, f.col, f.ph, false);
   }
   for (const j of jets) drawJet(j);

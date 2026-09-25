@@ -1,5 +1,5 @@
 // İnternetsiz çalışma: ilk açılıştan sonra oyun (kod + gömülü sesler) cihazda saklanır.
-const CACHE = 'orumcek-feza-v7';
+const CACHE = 'orumcek-feza-v8';
 const CORE = ['./', './index.html', './sesler.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 const FRESH = /(\/|index\.html|sesler\.js|manifest\.webmanifest)$/;   // önce ağ (güncel sürüm), yoksa kayıtlı kopya

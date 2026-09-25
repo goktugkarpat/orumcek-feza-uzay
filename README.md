@@ -22,7 +22,7 @@ Feza (ya da Anne ya da Baba) bir örümcek kahraman oluyor, ağını fırlatarak
 ## Gezegenler ve görevler
 
 Dünya, Ay, Mars, Jüpiter, Satürn, Uranüs, Neptün ve en sonda Galaksinin kalbi.
-Her gezegende kısa bir bilgi anlatılır ve bir görev yapılır: kardan adam yapmak, çiçek dikmek, yanardağı söndürmek, hazine kazmak, baloncuk patlatmak, bayrak dikmek, uzay arabası sürmek, kristallerle müzik yapmak, uzay köpeğini sevmek, düşen yıldızları yakalamak ve roket fırlatmak.
+Her gezegende kısa bir bilgi anlatılır ve küçük bir mini oyun oynanır. Gezegene üst üste basmak yerine etraftaki parçalar bulunup dokunulur: süzülen roket parçaları, uçan tohumlar, yuvarlanan kar topları, fışkıran lav topları (su sıkıp söndür), kum tepecikleri (kaz, hazineyi bul), parlayan yıldızlar (bayrak), elmaslar (araba gidip alır), kemikler (uzay köpeğine), Ay'da yukarıdaki yıldızlara zıplamak; ayrıca baloncuk patlatmak, kristallerle müzik yapmak ve düşen yıldızları yakalamak. Mini oyun sürerken arka plan yavaşlar.
 Sonunda havai fişekler seni bekliyor!
 
 ## Dosyalar

@@ -1178,6 +1178,7 @@ function initAudio() {
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   const b = AC.createBufferSource(); b.buffer = AC.createBuffer(1, 1, 22050); b.connect(AC.destination); b.start(0);
   if (AC.state !== 'running') AC.resume();
+  decodeAllVoices();
 }
 const mf = m => 440 * Math.pow(2, (m - 69) / 12);
 function tone(f, dur, o = {}) {
@@ -1283,7 +1284,8 @@ function pickVoice() {
 }
 if (hasTTS) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
 const voiceBufs = {};
-let voiceSrc = null, voiceEnd = 0, voiceProtect = 0, decodingAll = false, ducked = false;
+let voiceSrcs = [], voiceTimers = [], voiceFree = 0, voiceEnd = 0, lastSpeakStart = 0, decodingAll = false, ducked = false;
+const VOICE_GAP = 0.3; // iki konuşma arasında kısa bir nefes
 function b64ToBuf(b64) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
 function decodeVoice(k) {
   return new Promise(res => {
@@ -1295,27 +1297,37 @@ async function decodeAllVoices() {
   if (decodingAll) return; decodingAll = true;
   for (const k of Object.keys(window.VOICE_MP3 || {})) await decodeVoice(k);
 }
-function stopVoice() { if (voiceSrc) { try { voiceSrc.stop(); } catch (e) {} voiceSrc = null; } if (hasTTS) speechSynthesis.cancel(); }
-function speak(key, prio) {
-  if (muted) return false;
-  const now = rt();
-  if (now < voiceProtect && !key.startsWith('info_')) return false;
-  if (!prio && now < voiceEnd) return false;
-  stopVoice();
+function stopVoice() {
+  for (const v of voiceSrcs) { try { v.stop(); } catch (e) {} }
+  voiceSrcs = []; voiceTimers.forEach(clearTimeout); voiceTimers = [];
+  voiceFree = 0; voiceEnd = 0;
+  if (hasTTS) speechSynthesis.cancel();
+}
+// Konuşmalar birbirini kesmez, sıraya girer. wait: bu cümle en fazla kaç saniye sıra bekleyebilir
+// (0 = sadece o an kimse konuşmuyorsa söyle; "Süper!" gibi dolgu cümleler için). Konuşmanın bitiş zamanını (rt) döndürür, söylenmezse 0.
+function speak(key, wait = 0) {
+  if (muted) return 0;
+  const now = rt(), start = voiceFree > now ? voiceFree + VOICE_GAP : now;
+  if (start - now > wait) return 0;
   const buf = voiceBufs[key];
+  let dur;
   if (buf && AC) {
-    const s = AC.createBufferSource(); s.buffer = buf; s.connect(voiceBus); s.start(); voiceSrc = s;
-    voiceEnd = now + buf.duration + 0.1;
+    const v = AC.createBufferSource(); v.buffer = buf; v.connect(voiceBus);
+    v.start(AC.currentTime + (start - now)); voiceSrcs.push(v);
+    v.onended = () => { voiceSrcs = voiceSrcs.filter(x => x !== v); };
+    dur = buf.duration;
   } else {
     const text = window.VOICE_TEXT && VOICE_TEXT[key];
-    if (!text || !hasTTS) return false;
-    const u = new SpeechSynthesisUtterance(text); u.lang = 'tr-TR'; if (trVoice) u.voice = trVoice; u.rate = 1.02; u.pitch = 1.2;
-    speechSynthesis.speak(u);
-    voiceEnd = now + 0.6 + text.length * 0.07;
+    if (!text || !hasTTS) return 0;
+    dur = 0.6 + text.length * 0.07;
+    voiceTimers.push(setTimeout(() => {
+      const u = new SpeechSynthesisUtterance(text); u.lang = 'tr-TR'; if (trVoice) u.voice = trVoice; u.rate = 1.02; u.pitch = 1.2;
+      speechSynthesis.speak(u);
+    }, (start - now) * 1000));
   }
-  if (key.startsWith('info_')) voiceProtect = voiceEnd;
+  lastSpeakStart = start; voiceFree = start + dur; voiceEnd = voiceFree + 0.1;
   if (musicBus) { musicBus.gain.setTargetAtTime(started ? 0.15 : 0.32, AC.currentTime, 0.1); ducked = true; }
-  return true;
+  return voiceEnd;
 }
 function showSub(key) { const el = $('sub'); el.textContent = (window.VOICE_TEXT && VOICE_TEXT[key]) || ''; el.classList.add('on'); }
 function hideSub() { $('sub').classList.remove('on'); }
@@ -1405,7 +1417,7 @@ function spawnRow() {
     const A = landPoint(p), B = landPoint(a), C = arcCtrl(A, B), n = 3 + (Math.random() < 0.4 ? 1 : 0);
     for (let i = 1; i <= n; i++) {
       const pt = qb(A, C, B, 0.1 + 0.8 * i / (n + 1));
-      stars.push({ x: pt.x, y: pt.y - 8 * K, ph: rand(0, 6), got: false, burn: rowCount > 1 && Math.random() < 0.18 });
+      stars.push({ x: pt.x, y: pt.y - 8 * K, ph: rand(0, 6), got: false, burn: rowCount > 1 && Math.random() < 0.1 });
     }
   }
   anchors.push(...row);
@@ -1485,17 +1497,17 @@ function addScore(n, x, y) {
   updHUD(); bump($('pScore'));
   if (Math.floor(score / 200) > Math.floor(before / 200)) {
     popup('👑 ' + Math.floor(score / 100) * 100);
-    speak('king_' + CH.key, true);
+    speak('king_' + CH.key, 1.5);
     launchFireworks(8); sfx.fanfare(); confettiRain(70);
     hero.crown = 8; hero.happy = 3; hero.wave = 2; flash = 0.4;
   } else if (Math.floor(score / 100) > Math.floor(before / 100)) {
     popup('🏆 ' + Math.floor(score / 100) * 100);
-    speak('fireworks', true);
+    speak('fireworks', 0);
     launchFireworks(5); sfx.fanfare(); confettiRain(40); hero.happy = 2;
   } else if (Math.floor(score / 50) > Math.floor(before / 50)) {
     const i = Math.floor(Math.random() * 5);
     popup('🏆 ' + score);
-    speak('praise' + (i + 1), true); sfx.fanfare(); confettiRain(30);
+    speak('praise' + (i + 1), 0); sfx.sparkle(); confettiRain(30);
   }
 }
 function addStar(x, y) {
@@ -1511,7 +1523,7 @@ function addFriend(al) {
   friends.push({ x: al.x, y: al.y, col: al.col, ph: al.ph });
   sfx.rescue();
   sparkle(al.x, al.y, 26, ['#8ce99a', '#ffffff', al.col]);
-  speak('rescue' + (1 + Math.floor(Math.random() * 3)), false);
+  speak('rescue' + (1 + Math.floor(Math.random() * 3)), 3);
   addScore(25, al.x, al.y);
   bump($('pFr'));
 }
@@ -1529,16 +1541,17 @@ function webEnd(a, from) {
   const dx = from.x - a.x, dy = from.y - a.y, d = Math.hypot(dx, dy) || 1, r = a.r * sqScale(a) * 0.93;
   return { x: a.x + dx / d * r, y: a.y + dy / d * r };
 }
-function nudgeLock() { hero.nudge = 0.45; sfx.nope(); }
+let lastNope = -9;
+function nudgeLock() { hero.nudge = 0.45; if (time - lastNope > 0.8) { lastNope = time; sfx.nope(); } }
 // yapılacak şeyi hatırlat: parmak işareti hemen görünür, ses en fazla 5 saniyede bir
 let forceHint = 0, lastRemind = -99;
 function remind(key) {
   forceHint = time + 2.5;
-  if (time - lastRemind > 5 && speak(key, false)) lastRemind = time;
+  if (time - lastRemind > 5 && speak(key, 0)) lastRemind = time;
 }
 function beginZip(a) {
   if (hero.locked) { nudgeLock(); return; }
-  if (hero.activity && hero.activity.deco && hero.activity.deco.busy) { hero.nudge = 0.3; sfx.nope(); return; }
+  if (hero.activity && hero.activity.deco && hero.activity.deco.busy) { nudgeLock(); return; }
   if (hero.state === 'jump') return;
   if (hero.state === 'shoot' || hero.state === 'zip') return;
   if (a === hero.anchor) return;
@@ -1570,7 +1583,7 @@ function landOnLandmark(a) {
     visited[d.p] = true;
     const key = 'info_' + d.p;
     hero.locked = true; hero.lockStart = rt(); hero.pendingAct = a;
-    hero.lockUntil = speak(key, true) ? voiceEnd : rt() + 2;
+    hero.lockUntil = speak(key, 20) || rt() + 2;
     showSub(key);
   } else startActivity(a);
 }
@@ -1612,12 +1625,13 @@ function startActivity(a) {
     case 'pet': d.jump = 0; d.petT = -9; break;
   }
   hero.activity = a;
-  if (!d.launchRt) speak('act_' + d.type, true);
+  if (!d.launchRt) speak('act_' + d.type, 15);
 }
 function startCountdown(a) {
   const d = a.deco;
-  d.busy = true; d.cdStart = rt(); d.lastNum = 0;
-  d.launchRt = speak('countdown', true) ? voiceEnd - 0.35 : rt() + 3;
+  d.busy = true; d.lastNum = 0;
+  const e = speak('countdown', 10);
+  d.cdStart = e ? lastSpeakStart : rt(); d.launchRt = e ? e - 0.35 : rt() + 3;
 }
 // itemOnly: sadece bir öğeye (baloncuk, kristal, yıldız, uzaylı) dokunulduysa true döner
 function activityTap(wx, wy, itemOnly) {
@@ -1702,7 +1716,7 @@ function finishActivity(a) {
   const p = actPos(a, 0, 30 * K);
   if (d.type === 'pet') { const pp = actPos(a, DECO_ARC.pet * K, 15 * K); friends.push({ x: pp.x, y: pp.y, pet: true, ph: rand(0, 6) }); hearts(pp.x, pp.y, 10); }
   setTimeout(() => {
-    speak('done_' + d.type, true);
+    speak('done_' + d.type, 6);
     sfx.rescue(); sparkle(p.x, p.y, 30, ['#ffe066', '#ffffff', '#8ce99a', '#74c0fc'], 1.2);
     hero.happy = 2.5; hero.wave = 1.8;
     addScore(20, p.x, p.y);
@@ -1729,7 +1743,7 @@ function dryAlien(al) {
 function sneeze(al) {
   al.sneezeAt = time;
   const b = voiceBufs.hapsu;
-  if (b && AC && !muted) { const src = AC.createBufferSource(); src.buffer = b; src.connect(sfxBus); src.start(); }
+  if (b && AC && !muted && rt() > voiceFree) { const src = AC.createBufferSource(); src.buffer = b; src.connect(sfxBus); src.start(); }
   const dir = al.x < hero.x ? -1 : 1;
   for (let i = 0; i < 14; i++) addP({ x: al.x + dir * 8 * K, y: al.y + 3 * K, vx: dir * rand(60, 200) * K, vy: rand(-60, 30) * K, max: rand(0.4, 0.7), col: pick(['#e7f5ff', '#a5d8ff']), size: rand(1.2, 2.4) * K, g: 300 * K, add: false, kind: 'drop' });
 }
@@ -1811,7 +1825,7 @@ function update(dt) {
     const a = hero.pendingAct; hero.pendingAct = null;
     if (a && a === hero.anchor) startActivity(a);
   }
-  if (hero.goAt && now >= hero.goAt) { hero.goAt = 0; speak('go', false); }
+  if (hero.goAt && now >= hero.goAt) { hero.goAt = 0; speak('go', 0); }
 
   if (hero.onEarth && (hero.state === 'stand' || hero.state === 'shoot')) {
     hero.y = surf(hero.x) - (BD.foot + BD.bootR) * HS - Math.abs(Math.sin(time * 3)) * 2 * K;
@@ -1967,14 +1981,14 @@ function update(dt) {
   misses = misses.filter(m => m.t < 0.4);
 
   nextComet -= dt;
-  if (started && nextComet <= 0 && !hero.locked) { nextComet = rand(8, 13); spawnComet(); }
+  if (started && nextComet <= 0 && !hero.locked) { nextComet = rand(14, 20); spawnComet(); }
   for (const c of comets) {
     c.x += c.vx * dt; c.y += c.vy * dt;
     if (c.state === 'wet') { c.vx *= 1 - dt * 1.5; c.vy *= 1 - dt * 1.5; }
     const sp = Math.hypot(c.vx, c.vy) || 1;
     if (Math.random() < 0.7) addP({ x: c.x + rand(-4, 4) * K, y: c.y + rand(-4, 4) * K, vx: -c.vx / sp * rand(30, 90) * K + rand(-15, 15) * K, vy: -c.vy / sp * rand(30, 90) * K + rand(-15, 15) * K,
       max: rand(0.6, 1.2), col: c.cool > 0.5 ? pick(['#bfe6ff', '#ffffff']) : pick(['#ffc46b', '#ff8a3d', '#fff0c0']), size: rand(1.2, 2.8) * K, drag: 0.8 });
-    if (started && cometSays < 2 && !c.said && c.x > 0 && c.x < W && c.y > camY && c.y < camY + H) { if (speak('comet', false)) { cometSays++; c.said = true; } }
+    if (started && cometSays < 2 && !c.said && c.x > 0 && c.x < W && c.y > camY && c.y < camY + H) { if (speak('comet', 0)) { cometSays++; c.said = true; } }
   }
   for (const j of jets) {
     j.t += dt;
@@ -2022,7 +2036,7 @@ function update(dt) {
   }
   snowballs = snowballs.filter(b => !b.done);
   if (started && burnSays < 2) {
-    for (const s of stars) { if (s.burn && !s.said && s.y > camY + 60 && s.y < camY + H * 0.8) { if (speak('burn', false)) { burnSays++; s.said = true; } break; } }
+    for (const s of stars) { if (s.burn && !s.said && s.y > camY + 60 && s.y < camY + H * 0.8) { if (speak('burn', 0)) { burnSays++; s.said = true; } break; } }
   }
 
   for (const r of rockets) {
@@ -2093,13 +2107,13 @@ function update(dt) {
       }
       if (ht) {
         hintPos = { x: ht.x, y: ht.y, r: ht.r };
-        if (time - lastHintSay > 20 && hintSays < 3 && speak('hint', false)) { hintSays++; lastHintSay = time; }
+        if (time - lastHintSay > 20 && hintSays < 3 && speak('hint', 0)) { hintSays++; lastHintSay = time; }
       }
     }
   }
   if (started && alienSays < 3) {
     for (const al of aliens) {
-      if (!al.announced && al.state === 'wet' && al.near) { if (speak('alien', false)) { al.announced = true; alienSays++; } break; }
+      if (!al.announced && al.state === 'wet' && al.near) { if (speak('alien', 0)) { al.announced = true; alienSays++; } break; }
     }
   }
 }
@@ -2647,15 +2661,15 @@ function menuIntro() {
   const id = ++menuSeq;
   startMusic('menu');
   Promise.all(MENU_SEQ.map(decodeVoice)).then(() => {
-    let t = 300;
+    if (id !== menuSeq || started) return;
+    stopVoice();
     for (const k of MENU_SEQ) {
+      if (!speak(k, 20)) continue;
       const card = cards.find(c => 'ad_' + c.key === k);
-      setTimeout(() => {
+      if (card) setTimeout(() => {
         if (id !== menuSeq || started) return;
-        speak(k, true);
-        if (card) { card.el.classList.remove('say'); void card.el.offsetWidth; card.el.classList.add('say'); }
-      }, t);
-      t += ((voiceBufs[k] && voiceBufs[k].duration) || 1.2) * 1000 + 250;
+        card.el.classList.remove('say'); void card.el.offsetWidth; card.el.classList.add('say');
+      }, (lastSpeakStart - rt()) * 1000);
     }
   });
 }
@@ -2676,12 +2690,13 @@ function selectChar(key) {
   initAudio();
   CH = CHARS[key]; applyChar();
   resetWorld();
-  started = true; lastTap = time; nextComet = rand(7, 10);
+  started = true; lastTap = time; nextComet = rand(12, 16);
   hintSays = 0; alienSays = 0; cometSays = 0; burnSays = 0;
   document.body.classList.add('playing');
   $('start').classList.add('hide');
   const intro = 'intro_' + key;
-  decodeVoice(intro).then(() => { speak(intro, true); decodeAllVoices(); });
+  stopVoice();
+  decodeVoice(intro).then(() => { if (started) speak(intro, 10); decodeAllVoices(); });
   startMusic();
   try {
     const el = document.documentElement, fs = el.requestFullscreen || el.webkitRequestFullscreen;
@@ -2696,7 +2711,7 @@ for (const c of cards) c.el.addEventListener('click', () => {
 });
 $('home').addEventListener('pointerdown', e => {
   e.preventDefault(); e.stopPropagation();
-  started = false; stopVoice(); voiceProtect = 0;
+  started = false; stopVoice();
   document.body.classList.remove('playing');
   $('start').classList.remove('hide');
   resetWorld();

@@ -14,9 +14,10 @@ Feza (ya da Anne ya da Baba) bir örümcek kahraman oluyor, ağını fırlatarak
 
 - Başta kahramanını seç: **Feza**, **Anne** ya da **Baba**.
 - Bir gezegene dokun: kahraman ağını fırlatır ve oraya sallanarak gider.
-- Bir uzaylı yardım isteyince ona dokun ve kurtar (👽 sayacı artar).
+- Islak bir uzaylı gelince (tepesinde yağmur bulutu var, titriyor, hapşırıyor) üstüne dokun: Feza uzaktan kurutma makinesiyle sıcak hava sıkar, 5 dokunuşta uzaylı kupkuru olup dostun olur (👽 sayacı artar). Uzaylı kurulanmadan ve gezegendeki iş bitmeden yola çıkılmaz.
 - Kuyruklu yıldız gelince dokun, su fışkırt; yanan yıldıza dokun, kar topu at.
 - 🏠 düğmesi karakter seçimine döner, 🔊 düğmesi sesi açar/kapatır.
+- Adresin sonuna `?sessiz` eklersen oyun tamamen sessiz açılır (test için).
 
 ## Gezegenler ve görevler
 

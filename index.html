@@ -56,6 +56,9 @@ body.playing #btns{pointer-events:auto}
 .card span{font-size:30px;font-weight:900;letter-spacing:3px;padding:6px 0 0;text-shadow:0 2px 6px rgba(0,0,0,.6)}
 .c-feza{border-color:rgba(255,120,120,.7)}.c-anne{border-color:rgba(255,150,210,.7)}.c-baba{border-color:rgba(120,170,255,.7)}
 @keyframes float{50%{transform:translateY(-8px)}}
+.card.say{animation:say .9s ease-out;border-color:#fff;box-shadow:0 0 34px rgba(255,255,255,.55),0 14px 34px rgba(0,0,0,.5)}
+@keyframes say{30%{transform:scale(1.14) translateY(-12px)}100%{transform:scale(1)}}
+
 @media (max-height:640px){#start h2{margin:6px 0 12px}.card{width:150px;height:205px}.card canvas{width:150px;height:161px}.card span{font-size:24px}}
 </style>
 </head>
@@ -110,7 +113,7 @@ const cvs = $('game');
 const mainCtx = cvs.getContext('2d');
 let ctx = mainCtx;
 </script>
-<script src="sesler.js?v=8"></script>
+<script src="sesler.js?v=11"></script>
 <script>
 // ── Grafik (WebGL arka plan) ──
 'use strict';
@@ -866,7 +869,7 @@ function drawCharacter(ch, o) {
   ctx.restore();
 }
 
-function drawAlien(x, y, s, col, ph, bubble) {
+function drawAlien(x, y, s, col, ph, bubble, wet = 0) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.lineCap = 'round';
   const dk = darken(col, 0.35), wob = Math.sin(time * 4 + ph) * 1.5;
   ctx.strokeStyle = dk; ctx.lineWidth = 2.2;
@@ -884,6 +887,12 @@ function drawAlien(x, y, s, col, ph, bubble) {
   const bg = ctx.createRadialGradient(-4, -4, 1, 0, 1, 13);
   bg.addColorStop(0, lighten(col, 0.55)); bg.addColorStop(0.55, col); bg.addColorStop(1, darken(col, 0.55));
   ctx.fillStyle = bg; ctx.beginPath(); ctx.ellipse(0, 1, 12, 11, 0, 0, TAU); ctx.fill();
+  if (wet > 0) { // ıslak: mavimsi, üşümüş, üstünde parlak damlalar
+    ctx.globalAlpha = wet * 0.45; ctx.fillStyle = '#3d7fd1'; ctx.beginPath(); ctx.ellipse(0, 1, 12, 11, 0, 0, TAU); ctx.fill();
+    ctx.globalAlpha = wet; ctx.fillStyle = 'rgba(225,242,255,0.95)';
+    for (const [dx, dy] of [[-8, -5], [7, 6], [9, -3], [-5, 7]]) { ctx.beginPath(); ctx.ellipse(dx, dy, 1.3, 1.9, 0, 0, TAU); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  }
   const eg = ctx.createRadialGradient(-1, -2.5, 0.5, 0, -1, 6);
   eg.addColorStop(0, '#ffffff'); eg.addColorStop(1, '#d8dee6');
   ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(0, -1, 5.8, 0, TAU); ctx.fill();
@@ -892,7 +901,9 @@ function drawAlien(x, y, s, col, ph, bubble) {
   ctx.fillStyle = ig; ctx.beginPath(); ctx.arc(Math.sin(time * 1.3 + ph) * 1.5, -0.5, 3, 0, TAU); ctx.fill();
   ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-1, -2, 1.1, 0, TAU); ctx.fill();
   ctx.strokeStyle = darken(col, 0.6); ctx.lineWidth = 1.3;
-  ctx.beginPath(); ctx.arc(0, 5, 3.5, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke();
+  ctx.beginPath();
+  if (wet > 0.35) ctx.arc(0, 9, 3.5, 1.2 * Math.PI, 1.8 * Math.PI); else ctx.arc(0, 5, 3.5, 0.2 * Math.PI, 0.8 * Math.PI);
+  ctx.stroke();
   if (bubble) {
     const g = ctx.createRadialGradient(-6, -10, 2, 0, -2, 24);
     g.addColorStop(0, 'rgba(255,255,255,0.04)'); g.addColorStop(0.8, 'rgba(160,220,255,0.12)'); g.addColorStop(1, 'rgba(200,240,255,0.4)');
@@ -1152,7 +1163,7 @@ function drawBubble(x, y, r, ph) {
 const rt = () => performance.now() / 1000; // gerçek saat (ses ve kilit zamanlaması için)
 
 /* ================= SES EFEKTLERİ VE MÜZİK ================= */
-let AC = null, master = null, sfxBus = null, musicBus = null, voiceBus = null, noiseBuf = null, muted = false;
+let AC = null, master = null, sfxBus = null, musicBus = null, voiceBus = null, noiseBuf = null, muted = /sessiz/.test(location.search); // ?sessiz → test için tamamen sessiz
 function initAudio() {
   if (AC) { if (AC.state !== 'running') AC.resume(); return; }
   const C = window.AudioContext || window.webkitAudioContext;
@@ -1205,6 +1216,7 @@ const sfx = {
     s.connect(f); f.connect(g); g.connect(sfxBus); s.start(t); s.stop(t + 0.85); lfo.start(t); lfo.stop(t + 0.85);
     noiseBurst(0.8, 0.12, 'highpass', 4000, 0, 0.2);
   },
+  dryer() { tone(140, 0.45, { type: 'sawtooth', vol: 0.025, att: 0.04 }); tone(280, 0.45, { type: 'triangle', vol: 0.02, att: 0.04 }); noiseBurst(0.5, 0.3, 'bandpass', 1800, 2600, 0, 0.8); },
   throw() { noiseBurst(0.25, 0.25, 'bandpass', 1400, 300, 0, 1.5); },
   poof() { noiseBurst(0.35, 0.45, 'lowpass', 1200, 200); noiseBurst(0.5, 0.12, 'highpass', 5000, 0, 0.05); tone(mf(96), 0.15, { vol: 0.05 }); },
   dig() { noiseBurst(0.25, 0.35, 'lowpass', 900, 250); noiseBurst(0.18, 0.15, 'bandpass', 2500, 900, 0.08, 2); },
@@ -1226,19 +1238,36 @@ const sfx = {
 };
 const CHORDS = [[60, 64, 67], [57, 60, 64], [53, 57, 60], [55, 59, 62]];
 const ARP = [0, 1, 2, 1, 2, 1, 0, 1];
-let musicStep = 0, nextNoteT = 0, musicTimer = null;
-function startMusic() {
-  if (!AC || musicTimer) return;
+// Giriş ekranı müziği: yavaş, çan sesli bir uzay ninnisi (Fa – Do – Re minör – Si bemol)
+const MENU_CHORDS = [[65, 69, 72], [60, 64, 67], [62, 65, 69], [58, 62, 65]];
+const MENU_MEL = [72, 0, 77, 0, 76, 74, 72, 0, 67, 0, 72, 0, 74, 0, 76, 0, 74, 0, 77, 0, 81, 79, 77, 0, 74, 0, 72, 0, 70, 0, 72, 0];
+let musicStep = 0, nextNoteT = 0, musicTimer = null, musicMode = null;
+function startMusic(mode = 'game') {
+  if (!AC || (musicTimer && musicMode === mode)) return;
+  clearInterval(musicTimer);
+  musicMode = mode; musicStep = 0;
   nextNoteT = AC.currentTime + 0.1;
   musicTimer = setInterval(() => {
     if (!AC || AC.state !== 'running') return;
     if (nextNoteT < AC.currentTime - 0.5) nextNoteT = AC.currentTime + 0.05;
     while (nextNoteT < AC.currentTime + 0.4) {
-      const ch = CHORDS[Math.floor(musicStep / 8) % 4], i = musicStep % 8, d = nextNoteT - AC.currentTime;
-      tone(mf(ch[ARP[i]] + 12), 0.22, { type: 'triangle', vol: 0.045, delay: d, bus: musicBus });
-      if (i % 4 === 0) tone(mf(ch[0] - 12), 0.5, { vol: 0.085, delay: d, bus: musicBus });
-      if (i === 7 && Math.random() < 0.5) tone(mf(ch[2] + 24), 0.3, { vol: 0.022, delay: d, bus: musicBus });
-      musicStep++; nextNoteT += 0.24;
+      const d = nextNoteT - AC.currentTime;
+      if (musicMode === 'menu') {
+        const ch = MENU_CHORDS[Math.floor(musicStep / 8) % 4], i = musicStep % 8, n = MENU_MEL[musicStep % 32];
+        if (i === 0) for (const c of ch) tone(mf(c - 12), 2.2, { type: 'triangle', vol: 0.026, att: 0.35, delay: d, bus: musicBus });
+        if (i % 4 === 0) tone(mf(ch[0] - 24), 0.9, { vol: 0.085, delay: d, bus: musicBus });
+        if (n) {
+          tone(mf(n), 0.9, { vol: 0.07, att: 0.005, delay: d, bus: musicBus });
+          tone(mf(n + 12), 0.35, { vol: 0.012, att: 0.005, delay: d, bus: musicBus });
+        }
+        musicStep++; nextNoteT += 0.3;
+      } else {
+        const ch = CHORDS[Math.floor(musicStep / 8) % 4], i = musicStep % 8;
+        tone(mf(ch[ARP[i]] + 12), 0.22, { type: 'triangle', vol: 0.045, delay: d, bus: musicBus });
+        if (i % 4 === 0) tone(mf(ch[0] - 12), 0.5, { vol: 0.085, delay: d, bus: musicBus });
+        if (i === 7 && Math.random() < 0.5) tone(mf(ch[2] + 24), 0.3, { vol: 0.022, delay: d, bus: musicBus });
+        musicStep++; nextNoteT += 0.24;
+      }
     }
   }, 100);
 }
@@ -1285,7 +1314,7 @@ function speak(key, prio) {
     voiceEnd = now + 0.6 + text.length * 0.07;
   }
   if (key.startsWith('info_')) voiceProtect = voiceEnd;
-  if (musicBus) { musicBus.gain.setTargetAtTime(0.15, AC.currentTime, 0.1); ducked = true; }
+  if (musicBus) { musicBus.gain.setTargetAtTime(started ? 0.15 : 0.32, AC.currentTime, 0.1); ducked = true; }
   return true;
 }
 function showSub(key) { const el = $('sub'); el.textContent = (window.VOICE_TEXT && VOICE_TEXT[key]) || ''; el.classList.add('on'); }
@@ -1319,7 +1348,6 @@ let fallStars = [];
 const FLOWER_COLS = ['#ff6b9a', '#b197fc', '#ffa94d', '#ff8787', '#74c0fc'];
 const ALIEN_COLS = ['#69db7c', '#ffa94d', '#da77f2', '#4dabf7', '#ffe066', '#ff8787'];
 const FW_COLS = ['#ff5f5f', '#ffd43b', '#69db7c', '#4dabf7', '#da77f2', '#ffa94d', '#ffffff'];
-const PRAISE_POP = ['SÜPER!', 'AFERİN!', 'VAY CANINA!', 'MUHTEŞEM!', 'ÖRÜMCEK GÜCÜ!'];
 
 let started = false;
 let anchors = [], stars = [], aliens = [], friends = [], particles = [], grabs = [], misses = [], popups = [], shooters = [];
@@ -1381,11 +1409,11 @@ function spawnRow() {
     }
   }
   anchors.push(...row);
-  if (!isLM && rowCount % 5 === 3) {
+  if (!isLM && rowCount > 3 && rowCount % 3 === 2) {
     const mx = row.length > 1 ? W / 2 : (row[0].x + prevX) / 2;
     const ax = row.length > 1 ? W * 0.5 : (mx < W / 2 ? rand(0.72, 0.86) : rand(0.14, 0.28)) * W;
     const ay = y + gap * 0.45;
-    aliens.push({ x: ax, y: ay, bx: ax, by: ay, col: pick(ALIEN_COLS), ph: rand(0, 6), state: 'float', announced: false });
+    aliens.push({ x: ax, y: ay, bx: ax, by: ay, col: pick(ALIEN_COLS), ph: rand(0, 6), state: 'wet', wet: 1, sneezeT: 0, near: false, announced: false });
   }
   lastRow = row; lastRowY = y;
 }
@@ -1445,7 +1473,8 @@ function explode(r) {
   flash = Math.max(flash, 0.12);
   sfx.boom();
 }
-function popup(text, col, sub) { popups = [{ text, col, sub, t: 0, max: 2.4 }]; }
+// Feza henüz okuyamadığı için ortada kocaman yazı yok: sadece küçük bir kupa + puan rozeti
+function popup(text) { popups = [{ text, t: 0, max: 1.8 }]; }
 function bump(el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
 function updHUD() { $('sc').textContent = score; $('fc').textContent = friendCount; }
 
@@ -1455,17 +1484,17 @@ function addScore(n, x, y) {
   floatTexts.push({ x, y, text: '+' + n, t: 0 });
   updHUD(); bump($('pScore'));
   if (Math.floor(score / 200) > Math.floor(before / 200)) {
-    popup('HARİKASIN!', '#ffd43b', '👑 ' + Math.floor(score / 100) * 100);
+    popup('👑 ' + Math.floor(score / 100) * 100);
     speak('king_' + CH.key, true);
     launchFireworks(8); sfx.fanfare(); confettiRain(70);
     hero.crown = 8; hero.happy = 3; hero.wave = 2; flash = 0.4;
   } else if (Math.floor(score / 100) > Math.floor(before / 100)) {
-    popup('SÜPER!', '#ffd43b', '🏆 ' + Math.floor(score / 100) * 100);
+    popup('🏆 ' + Math.floor(score / 100) * 100);
     speak('fireworks', true);
     launchFireworks(5); sfx.fanfare(); confettiRain(40); hero.happy = 2;
   } else if (Math.floor(score / 50) > Math.floor(before / 50)) {
     const i = Math.floor(Math.random() * 5);
-    popup(PRAISE_POP[i], '#ffe066', '🏆 ' + score);
+    popup('🏆 ' + score);
     speak('praise' + (i + 1), true); sfx.fanfare(); confettiRain(30);
   }
 }
@@ -1501,12 +1530,22 @@ function webEnd(a, from) {
   return { x: a.x + dx / d * r, y: a.y + dy / d * r };
 }
 function nudgeLock() { hero.nudge = 0.45; sfx.nope(); }
+// yapılacak şeyi hatırlat: parmak işareti hemen görünür, ses en fazla 5 saniyede bir
+let forceHint = 0, lastRemind = -99;
+function remind(key) {
+  forceHint = time + 2.5;
+  if (time - lastRemind > 5 && speak(key, false)) lastRemind = time;
+}
 function beginZip(a) {
   if (hero.locked) { nudgeLock(); return; }
   if (hero.activity && hero.activity.deco && hero.activity.deco.busy) { hero.nudge = 0.3; sfx.nope(); return; }
   if (hero.state === 'jump') return;
-  if (hero.state === 'shoot' || hero.state === 'zip') { if (hero.zip && hero.zip.target !== a) hero.queue = a; return; }
+  if (hero.state === 'shoot' || hero.state === 'zip') return;
   if (a === hero.anchor) return;
+  // tempo: ıslak uzaylı kurulanmadan ya da gezegendeki iş bitmeden yola çıkılmaz
+  if (aliens.some(al => al.near && al.state === 'wet')) { nudgeLock(); remind('dry_wait'); return; }
+  const act = hero.activity;
+  if (act && act === hero.anchor && act.deco && !act.deco.done) { nudgeLock(); remind('act_wait'); return; }
   hero.state = 'shoot';
   hero.zip = { target: a, st: 0, t: 0 };
   hero.activity = null;
@@ -1520,14 +1559,11 @@ function arrive(a) {
   dust(lp.x, a.y - a.r, 10, a.type === 'lava' ? '#6b5a50' : a.type === 'ice' ? '#e8f4ff' : '#cfc3b5');
   if (a.landmark !== undefined) landOnLandmark(a);
   else if (a.act && !(a.deco && a.deco.done)) startActivity(a);
-  if (hero.queue && !hero.locked) { const q = hero.queue; hero.queue = null; if (q !== a && anchors.includes(q)) beginZip(q); }
-  hero.queue = null;
 }
 function landOnLandmark(a) {
   const z = a.landmark, d = zdef(z);
   if (z > zone) {
     zone = z;
-    popup(d.name, '#9fd0ff');
     sfx.fanfare(); confettiRain(80); flash = 0.35; hero.happy = 2;
   }
   if (!visited[d.p]) {
@@ -1673,6 +1709,30 @@ function finishActivity(a) {
     if (a.landmark !== undefined) hero.goAt = voiceEnd + 0.3;
   }, d.type === 'lava' ? 500 : 250);
 }
+// uzaktan kurutma makinesiyle sıcak hava: her dokunuşta biraz kurur, 5 dokunuşta kupkuru
+function dryAlien(al) {
+  al.wet = Math.max(0, al.wet - 0.2);
+  if (!al.near) { al.near = true; al.sneezeT = time + 2.5; }
+  hero.happy = 0.8;
+  const j = jets.find(j => j.dry && j.target === al);
+  if (j) j.dur = j.t + 0.55; else jets.push({ target: al, t: 0, dur: 0.55, dry: true });
+  sfx.dryer(); tone(mf(76 + Math.round((1 - al.wet) * 12)), 0.18, { type: 'triangle', vol: 0.08, delay: 0.05 });
+  for (let i = 0; i < 12; i++) {
+    const a = rand(0, TAU), v = rand(80, 200) * K;
+    addP({ x: al.x, y: al.y - 4 * K, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60 * K, max: rand(0.4, 0.8), col: pick(['#a5d8ff', '#74c0fc', '#ffffff']), size: rand(1.5, 3) * K, g: 380 * K, add: false, kind: 'drop' });
+  }
+  if (al.wet <= 0.001) {
+    al.state = 'dry'; al.dryT = time; al.bx = al.x; al.by = al.y;
+    sparkle(al.x, al.y, 30, ['#ffe066', '#ffffff', '#ffa94d', al.col], 1.2); hearts(al.x, al.y - 10 * K, 8); sfx.sparkle();
+  }
+}
+function sneeze(al) {
+  al.sneezeAt = time;
+  const b = voiceBufs.hapsu;
+  if (b && AC && !muted) { const src = AC.createBufferSource(); src.buffer = b; src.connect(sfxBus); src.start(); }
+  const dir = al.x < hero.x ? -1 : 1;
+  for (let i = 0; i < 14; i++) addP({ x: al.x + dir * 8 * K, y: al.y + 3 * K, vx: dir * rand(60, 200) * K, vy: rand(-60, 30) * K, max: rand(0.4, 0.7), col: pick(['#e7f5ff', '#a5d8ff']), size: rand(1.2, 2.4) * K, g: 300 * K, add: false, kind: 'drop' });
+}
 function shootGrab(obj, kind) {
   obj.grabbed = true;
   if (kind === 'alien') obj.state = 'pulled';
@@ -1700,7 +1760,7 @@ function onTap(sx, sy) {
   if (!started) return;
   lastTap = time;
   const wx = sx, wy = sy + camY;
-  for (const al of aliens) if (al.state === 'float' && dist(wx, wy, al.x, al.y) < 55 * K) { shootGrab(al, 'alien'); return; }
+  for (const al of aliens) if (al.state === 'wet' && dist(wx, wy, al.x, al.y) < 70 * K) { dryAlien(al); return; }
   for (const c of comets) if (c.state === 'fly' && dist(wx, wy, c.x, c.y) < 75 * K) { sprayWater(c); return; }
   for (const s of stars) if (s.burn && !s.targeted && dist(wx, wy, s.x, s.y) < 55 * K) { throwSnowball(s); return; }
   if (activityTap(wx, wy, true)) return;
@@ -1725,6 +1785,13 @@ function onTap(sx, sy) {
   sfx.thwip(); sfx.miss();
 }
 
+// kurutma makinesi elde, ucu uzaylıya dönük; sıcak hava namlunun ucundan çıkar
+function dryerPose(j) {
+  const h = handWorld(), c = j.target, a = Math.atan2(c.y - h.y, c.x - h.x), fl = Math.cos(a) < 0 ? -1 : 1;
+  const tx = 24 * K, ty = -9 * K * fl, ca = Math.cos(a), sa = Math.sin(a);
+  return { h, a, fl, tip: { x: h.x + ca * tx - sa * ty, y: h.y + sa * tx + ca * ty } };
+}
+const dryCurve = j => { const t = dryerPose(j).tip, c = j.target; return [t.x, t.y, (t.x + c.x) / 2, (t.y + c.y) / 2 - dist(t.x, t.y, c.x, c.y) * 0.08, c.x, c.y]; };
 const jetCurve = j => { const h = handWorld(), c = j.target; return [h.x, h.y, (h.x + c.x) / 2, (h.y + c.y) / 2 - dist(h.x, h.y, c.x, c.y) * 0.12, c.x, c.y]; };
 const qpt = (p, t) => [(1 - t) * (1 - t) * p[0] + 2 * (1 - t) * t * p[2] + t * t * p[4], (1 - t) * (1 - t) * p[1] + 2 * (1 - t) * t * p[3] + t * t * p[5]];
 
@@ -1767,7 +1834,7 @@ function update(dt) {
     if (hero.zip.st >= 0.12) {
       const z = hero.zip, to = landPoint(z.target);
       z.from = { x: hero.x, y: hero.y }; z.ctrl = arcCtrl(z.from, to);
-      z.dur = clamp(dist(hero.x, hero.y, to.x, to.y) / (950 * K), 0.45, 0.9);
+      z.dur = clamp(dist(hero.x, hero.y, to.x, to.y) / (700 * K), 0.65, 1.2);
       z.t = 0; hero.anchor = null; hero.onEarth = false; hero.state = 'zip';
     }
   } else if (hero.state === 'zip') {
@@ -1793,11 +1860,25 @@ function update(dt) {
     if (s.cooled > 0) { s.cooled -= dt; if (s.cooled <= 0 && !s.grabbed) shootGrab(s, 'star'); continue; }
     if (!s.got && !s.grabbed && dist(hero.x, hero.y - 5 * K, s.x, s.y) < 48 * K) { s.got = true; addStar(s.x, s.y); }
   }
+  // ıslak uzaylılar: ekrana girince kahramanın yanına gelir, titrer, damlar, hapşırır; dokununca havluyla kurulanır
+  const heroFree = (hero.state === 'sit' || hero.state === 'stand' || hero.state === 'jump') && !hero.locked;
+  const actBusy = hero.activity && hero.activity.deco && !hero.activity.deco.done;
   for (const al of aliens) {
-    if (al.state === 'float') {
-      al.x = al.bx + Math.sin(time * 0.8 + al.ph) * 14 * K;
-      al.y = al.by + Math.sin(time * 1.3 + al.ph) * 10 * K;
-      if (dist(hero.x, hero.y, al.x, al.y) < 58 * K) shootGrab(al, 'alien');
+    if (al.state === 'wet') {
+      const onScreen = al.y > camY + 30 * K && al.y < camY + H - 30 * K;
+      if (!al.near && onScreen && heroFree && !actBusy && !aliens.some(o => o !== al && o.near)) { al.near = true; al.sneezeT = time + 2.5; }
+      if (al.near) {
+        const side = hero.x < W / 2 ? 1 : -1, k = Math.min(1, dt * 2.2);
+        al.bx += (clamp(hero.x + side * 175 * K, 70 * K, W - 70 * K) - al.bx) * k;
+        al.by += (hero.y - 135 * K - al.by) * k;
+      }
+      al.x = al.bx + Math.sin(time * 0.8 + al.ph) * 10 * K + Math.sin(time * 38 + al.ph) * 1.6 * K * al.wet;
+      al.y = al.by + Math.sin(time * 1.3 + al.ph) * 7 * K;
+      if (Math.random() < 0.2 + al.wet * 0.5) addP({ x: al.x + rand(-12, 12) * K, y: al.y + 12 * K, vx: rand(-10, 10) * K, vy: rand(20, 60) * K, max: rand(0.5, 0.9), col: pick(['#a5d8ff', '#74c0fc', '#e7f5ff']), size: rand(1.4, 2.6) * K, g: 420 * K, add: false, kind: 'drop' });
+      if (al.near && time > al.sneezeT) { al.sneezeT = time + rand(3.5, 5.5); sneeze(al); }
+    } else if (al.state === 'dry') {
+      al.x = al.bx; al.y = al.by - Math.sin(clamp((time - al.dryT) / 0.6, 0, 1) * Math.PI) * 14 * K;
+      if (time - al.dryT > 0.9) addFriend(al);
     }
   }
   // yanardağ aktivitesi: söndürülene kadar lav fışkırır
@@ -1897,6 +1978,16 @@ function update(dt) {
   }
   for (const j of jets) {
     j.t += dt;
+    if (j.dry) {
+      const c = j.target, p = dryCurve(j), reach = Math.min(1, j.t / 0.12);
+      for (let i = 0; i < 3; i++) {
+        const u = Math.random() * reach, q = qpt(p, u);
+        addP({ x: q[0] + rand(-6, 6) * K * u, y: q[1] + rand(-6, 6) * K * u, vx: rand(-20, 20) * K, vy: rand(-40, -10) * K, max: rand(0.35, 0.6), col: pick(['#fff4e6', '#ffe8cc', '#ffffff']), size: (4 + u * 8) * K, drag: 1.5, add: false, kind: 'steam' });
+      }
+      if (reach >= 1 && Math.random() < 0.6) { const a = rand(0, TAU), v = rand(60, 150) * K; addP({ x: c.x, y: c.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40 * K, max: 0.5, col: pick(['#a5d8ff', '#e7f5ff']), size: rand(1.4, 2.6) * K, g: 300 * K, add: false, kind: 'drop' }); }
+      if (j.t >= j.dur) j.done = true;
+      continue;
+    }
     const c = j.target, p = jetCurve(j);
     if (j.comet) c.cool = Math.min(1, j.t / j.dur);
     for (let i = 0; i < 3; i++) { const q = qpt(p, Math.random()); addP({ x: q[0], y: q[1], vx: rand(-40, 40) * K, vy: rand(-30, 30) * K, max: rand(0.3, 0.6), col: pick(['#cfe9ff', '#8fc8ff', '#ffffff']), size: rand(1.2, 2.4) * K, g: 300 * K, add: false, kind: 'drop' }); }
@@ -1978,13 +2069,14 @@ function update(dt) {
   const bottom = camY + H + 400 * K;
   anchors = anchors.filter(a => a.y - a.r < bottom || a === hero.anchor || (hero.zip && hero.zip.target === a));
   stars = stars.filter(s => !s.got && (s.y < bottom || s.grabbed));
-  aliens = aliens.filter(a => a.y < bottom || a.state !== 'float');
+  aliens = aliens.filter(a => a.y < bottom || a.near || a.state !== 'wet');
   bgZ += (zone - bgZ) * Math.min(1, dt * 0.8);
 
   hintPos = null;
-  if (started && time - lastTap > 3.5 && grabs.length === 0 && !hero.locked) {
-    const act = hero.activity;
-    if (act && act.deco && !act.deco.done && hero.state === 'sit') {
+  if (started && (time - lastTap > 3.5 || time < forceHint) && grabs.length === 0 && !hero.locked) {
+    const act = hero.activity, wa = aliens.find(al => al.near && al.state === 'wet');
+    if (wa) hintPos = { x: wa.x, y: wa.y, r: 26 * K };
+    else if (act && act.deco && !act.deco.done && hero.state === 'sit') {
       const d = act.deco;
       if (d.type === 'gas') { const i = d.bubbles.findIndex(b => !b.popped); if (i >= 0) { const p = bubblePos(act, d.bubbles[i], i); hintPos = { x: p.x, y: p.y, r: 22 * K }; } }
       else if (d.type === 'music') { if (!d.melodyT) { const i = Math.floor(time * 0.8) % 5, p = crystalPos(act, i); hintPos = { x: p.x, y: p.y, r: 18 * K }; } }
@@ -2005,9 +2097,9 @@ function update(dt) {
       }
     }
   }
-  if (started && alienSays < 2) {
+  if (started && alienSays < 3) {
     for (const al of aliens) {
-      if (!al.announced && al.state === 'float' && al.y > camY + 40 && al.y < camY + H * 0.8) { if (speak('alien', false)) { al.announced = true; alienSays++; } break; }
+      if (!al.announced && al.state === 'wet' && al.near) { if (speak('alien', false)) { al.announced = true; alienSays++; } break; }
     }
   }
 }
@@ -2159,6 +2251,7 @@ function drawComet(c) {
   }
 }
 function drawJet(j) {
+  if (j.dry) return drawDryJet(j);
   const p = jetCurve(j), g = Math.min(1, j.t / 0.12);
   const b = qpt(p, g), c1 = [lerp(p[0], p[2], g), lerp(p[1], p[3], g)];
   ctx.lineCap = 'round';
@@ -2280,6 +2373,50 @@ function drawDeco(a) {
       break;
   }
 }
+function drawRainCloud(x, y, wet) {
+  const s = K * (0.55 + 0.45 * wet), al = clamp(wet * 1.6, 0, 1);
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.lineCap = 'round';
+  ctx.strokeStyle = '#a5d8ff'; ctx.lineWidth = 1.8;
+  for (let i = 0; i < 5; i++) {
+    const px = -14 + i * 7, ph = (time * 2.2 + i * 0.37) % 1, py = 6 + ph * 26;
+    ctx.globalAlpha = al * (1 - ph); ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - 1, py + 6); ctx.stroke();
+  }
+  ctx.globalAlpha = al;
+  const g = ctx.createLinearGradient(0, -15, 0, 8);
+  g.addColorStop(0, '#d5dcea'); g.addColorStop(1, '#7d89a1');
+  ctx.fillStyle = g;
+  for (const [cx, cy, r] of [[-10, 0, 8], [0, -5, 10.5], [11, 0, 7.5], [2, 2, 8]]) { ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill(); }
+  ctx.restore();
+}
+function drawDryer(j) {
+  const { h, a, fl } = dryerPose(j), fade = clamp((j.dur - j.t) / 0.15, 0, 1);
+  ctx.save(); ctx.globalAlpha = fade; ctx.translate(h.x, h.y); ctx.rotate(a); ctx.scale(K, K * fl);
+  ctx.fillStyle = '#a61e4d'; ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(-4, -3, 8, 17, 3); else ctx.rect(-4, -3, 8, 17);
+  ctx.fill();
+  const g = ctx.createLinearGradient(0, -19, 0, 1);
+  g.addColorStop(0, '#ffc2d8'); g.addColorStop(1, '#e64980');
+  ctx.fillStyle = g; ctx.fillRect(2, -14, 20, 10);
+  ctx.beginPath(); ctx.ellipse(1, -9, 10, 10, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#a61e4d'; ctx.fillRect(21, -15, 4, 12);
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.2;
+  for (const r of [3, 6]) { ctx.beginPath(); ctx.arc(-3, -9, r, Math.PI * 0.6, Math.PI * 1.4); ctx.stroke(); }
+  ctx.restore();
+}
+function drawDryJet(j) {
+  const p = dryCurve(j), reach = Math.min(1, j.t / 0.12), fade = clamp((j.dur - j.t) / 0.15, 0, 1);
+  const a = Math.atan2(p[5] - p[1], p[4] - p[0]), nx = -Math.sin(a), ny = Math.cos(a);
+  ctx.save(); ctx.globalAlpha = fade; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (let k = -1; k <= 1; k++) {
+    ctx.beginPath();
+    for (let i = 0; i <= 20; i++) {
+      const u = i / 20 * reach, q = qpt(p, u), w = Math.sin(u * 18 - time * 22 + k * 2) * (2 + u * 7) * K + k * u * 14 * K;
+      if (i) ctx.lineTo(q[0] + nx * w, q[1] + ny * w); else ctx.moveTo(q[0] + nx * w, q[1] + ny * w);
+    }
+    ctx.strokeStyle = k ? 'rgba(255,196,130,0.6)' : 'rgba(255,246,232,0.9)'; ctx.lineWidth = (k ? 2.2 : 3.2) * K; ctx.stroke();
+  }
+  ctx.restore();
+}
 function drawLockBubble() {
   const hc = { x: hero.x, y: hero.y + (BD.helmC[1] - BD.helm) * HS - 34 * K };
   const shake = hero.nudge > 0 ? Math.sin(hero.nudge * 60) * 6 * K * (hero.nudge / 0.45) : 0;
@@ -2370,12 +2507,16 @@ function render2D() {
   for (const s of stars) if (s.y > top && s.y < bot) { if (s.burn) drawBurningStar(s); else drawStar(s); }
   for (const al of aliens) {
     if (al.y < top || al.y > bot) continue;
-    if (al.state === 'float') {
+    const wet = al.state === 'wet' ? al.wet : 0;
+    if (wet > 0) {
       const p = (time * 1.2 + al.ph) % 1;
       ctx.strokeStyle = `rgba(255,224,102,${0.7 * (1 - p)})`; ctx.lineWidth = 2.5 * K;
-      ctx.beginPath(); ctx.arc(al.x, al.y - 2 * K, (34 + p * 26) * K, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(al.x, al.y - 2 * K, (40 + p * 26) * K, 0, TAU); ctx.stroke();
+      drawRainCloud(al.x, al.y - 52 * K, wet);
     }
-    drawAlien(al.x, al.y, 1.3 * K, al.col, al.ph, true);
+    const sn = al.sneezeAt && time - al.sneezeAt < 0.3 ? Math.sin((time - al.sneezeAt) / 0.3 * Math.PI) : 0;
+    const pop = al.state === 'dry' ? 1 + Math.sin(clamp((time - al.dryT) / 0.5, 0, 1) * Math.PI) * 0.25 : 1;
+    drawAlien(al.x, al.y + sn * 4 * K, 1.6 * K * pop * (1 - sn * 0.08), al.col, al.ph, false, wet);
   }
   for (const s of fallStars) {
     ctx.globalCompositeOperation = 'lighter';
@@ -2393,6 +2534,7 @@ function render2D() {
   }
   for (const j of jets) drawJet(j);
   drawCharacter(CH, heroOpts());
+  for (const j of jets) if (j.dry) drawDryer(j);
   for (const b of snowballs) drawSnowballFx(b);
   for (const r of rockets) {
     if (r.delay > 0) continue;
@@ -2418,22 +2560,16 @@ function render2D() {
 
   if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash * 0.55})`; ctx.fillRect(0, 0, W, H); }
   for (const p of popups) {
-    const k = p.t < 0.35 ? easeOutBack(p.t / 0.35) : 1;
+    const k = p.t < 0.3 ? easeOutBack(p.t / 0.3) : 1;
     const al = p.t > p.max - 0.4 ? (p.max - p.t) / 0.4 : 1;
     ctx.save(); ctx.globalAlpha = clamp(al, 0, 1);
-    ctx.translate(W / 2, H * 0.3); ctx.scale(k, k); ctx.rotate(Math.sin(p.t * 3) * 0.03);
+    ctx.translate(W / 2, 62 * K); ctx.scale(k, k);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
-    const fs = Math.min(70 * K, W / (p.text.length * 0.72));
-    ctx.font = `900 ${Math.round(fs)}px ${FONT}`;
-    ctx.lineWidth = 12 * K; ctx.strokeStyle = 'rgba(10,5,40,.9)';
-    ctx.strokeText(p.text, 0, 0);
-    const tg = ctx.createLinearGradient(0, -fs / 2, 0, fs / 2);
-    tg.addColorStop(0, '#ffffff'); tg.addColorStop(0.5, p.col); tg.addColorStop(1, mix(p.col, '#000000', 0.3));
-    ctx.fillStyle = tg; ctx.fillText(p.text, 0, 0);
-    if (p.sub) {
-      ctx.font = `900 ${Math.round(42 * K)}px ${FONT}`;
-      ctx.lineWidth = 9 * K; ctx.strokeText(p.sub, 0, 62 * K); ctx.fillStyle = '#fff'; ctx.fillText(p.sub, 0, 62 * K);
-    }
+    ctx.font = `900 ${Math.round(30 * K)}px ${FONT}`;
+    const bw = ctx.measureText(p.text).width + 34 * K, bh = 48 * K;
+    ctx.fillStyle = 'rgba(5,8,30,.6)'; ctx.strokeStyle = 'rgba(255,212,59,.8)'; ctx.lineWidth = 2 * K;
+    ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(-bw / 2, -bh / 2, bw, bh, bh / 2); else ctx.rect(-bw / 2, -bh / 2, bw, bh); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffe27a'; ctx.fillText(p.text, 0, 2 * K);
     ctx.restore();
   }
 }
@@ -2503,7 +2639,40 @@ document.addEventListener('visibilitychange', () => {
   else if (AC) AC.resume();
 });
 
+/* ---- giriş ekranı: müzik + "Kahramanını seç! Örümcek Feza! Örümcek Anne! Örümcek Baba!" ---- */
+const MENU_SEQ = ['sec', 'ad_feza', 'ad_anne', 'ad_baba'];
+let menuSeq = 0;
+function menuIntro() {
+  menuHeard = true;
+  const id = ++menuSeq;
+  startMusic('menu');
+  Promise.all(MENU_SEQ.map(decodeVoice)).then(() => {
+    let t = 300;
+    for (const k of MENU_SEQ) {
+      const card = cards.find(c => 'ad_' + c.key === k);
+      setTimeout(() => {
+        if (id !== menuSeq || started) return;
+        speak(k, true);
+        if (card) { card.el.classList.remove('say'); void card.el.offsetWidth; card.el.classList.add('say'); }
+      }, t);
+      t += ((voiceBufs[k] && voiceBufs[k].duration) || 1.2) * 1000 + 250;
+    }
+  });
+}
+for (const c of cards) c.el.addEventListener('animationend', e => { if (e.animationName === 'say') c.el.classList.remove('say'); });
+// Tarayıcılar (özellikle iPad) ilk dokunuştan önce ses çaldırmaz: ses açılır açılmaz giriş müziği ve seslendirme başlar.
+// Çocuk ilk dokunuşta doğrudan bir karta basarsa giriş seslendirmesi atlanır, oyun kendi karşılamasıyla başlar.
+let menuReady = false, menuHeard = false;
+function tryMenuIntro() {
+  if (menuReady || started || !AC || AC.state !== 'running') return;
+  menuReady = true;
+  setTimeout(() => { if (!started && !menuHeard) menuIntro(); }, 250);
+}
+$('start').addEventListener('click', () => { initAudio(); tryMenuIntro(); });
+if (!/ikon/.test(location.search)) { initAudio(); if (AC) { AC.addEventListener('statechange', tryMenuIntro); tryMenuIntro(); } }
+
 function selectChar(key) {
+  menuSeq++;
   initAudio();
   CH = CHARS[key]; applyChar();
   resetWorld();
@@ -2520,13 +2689,18 @@ function selectChar(key) {
     if (r && r.catch) r.catch(() => {});
   } catch (e) {}
 }
-for (const c of cards) c.el.addEventListener('click', () => selectChar(c.key));
+for (const c of cards) c.el.addEventListener('click', () => {
+  // ses henüz açılmadıysa ilk dokunuş giriş müziğini ve seslendirmeyi başlatır; kahraman bir sonraki dokunuşta seçilir
+  if (!menuHeard) { initAudio(); menuIntro(); c.el.classList.remove('say'); void c.el.offsetWidth; c.el.classList.add('say'); return; }
+  selectChar(c.key);
+});
 $('home').addEventListener('pointerdown', e => {
   e.preventDefault(); e.stopPropagation();
   started = false; stopVoice(); voiceProtect = 0;
   document.body.classList.remove('playing');
   $('start').classList.remove('hide');
   resetWorld();
+  menuIntro();
 });
 $('snd').addEventListener('pointerdown', e => {
   e.preventDefault(); e.stopPropagation();

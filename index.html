@@ -9,6 +9,9 @@
 <meta name="apple-mobile-web-app-title" content="Örümcek Feza">
 <meta name="theme-color" content="#02030f">
 <meta name="robots" content="noindex, nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
 <title>Örümcek Feza – Uzay Macerası</title>
 <style>
 *{box-sizing:border-box}
@@ -2548,6 +2551,31 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+// iPad'de "Ana Ekrana Ekle" + internetsiz çalışma (service worker sadece http/https'te çalışır, file:// değil)
+if ('serviceWorker' in navigator && /^https?:/.test(location.protocol) && !/ikon/.test(location.search)) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+// ?ikon → big Örümcek Feza hanging from his web over the space scene; used to render the app icon
+if (/ikon/.test(location.search)) {
+  muted = true;
+  for (const id of ['start', 'hud', 'btns']) { const el = $(id); if (el) el.style.display = 'none'; }
+  const ic = document.createElement('canvas'); ic.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:50;pointer-events:none';
+  document.body.appendChild(ic);
+  const q = new URLSearchParams(location.search), zoom = Number(q.get('z') || 0.6);
+  (function iconFrame() {
+    const w = innerWidth, h = innerHeight; ic.width = Math.round(w * DPR); ic.height = Math.round(h * DPR);
+    const K0 = K; ctx = ic.getContext('2d'); ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, w, h);
+    const ch = CHARS.feza, b = BODY[ch.kind];
+    const g = ctx.createRadialGradient(w / 2, h * 0.5, 10, w / 2, h * 0.5, w * 0.5);
+    g.addColorStop(0, 'rgba(255,90,90,0.30)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    const topU = b.helmC[1] - b.helm, botU = b.hipY + (b.foot - b.hipY) * 0.62;
+    const sc = h * zoom / (botU - topU), x = w / 2 - b.arm[4] * sc * 0.4, y = h * 0.17 - topU * sc;
+    const hx2 = b.arm[4], hy2 = b.arm[5] - 3 - b.gloveR;
+    K = w / 150; drawWeb(x + hx2 * sc, y + hy2 * sc, x + hx2 * sc + 20, -10); K = K0;
+    drawCharacter(ch, { x, y, angle: 0.05, s: sc, state: 'hang', onEarth: false, happy: true, blink: false, crown: 0 });
+    ctx = mainCtx; requestAnimationFrame(iconFrame);
+  })();
+}
 </script>
 </body>
 </html>

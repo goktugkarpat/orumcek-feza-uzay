@@ -7,7 +7,8 @@ Feza (ya da Anne ya da Baba) bir örümcek kahraman oluyor, ağını fırlatarak
 
 - **Bilgisayarda:** `index.html` dosyasına çift tıklamanız yeterli. Kurulum ya da internet gerekmez.
 - **iPad'de / internette:** Oyun GitHub Pages'ta yayında: https://goktugkarpat.github.io/orumcek-feza-uzay/
-  iPad'de Safari ile bu adresi açıp Paylaş › **Ana Ekrana Ekle** diyebilirsiniz.
+  iPad'de Safari ile bu adresi açıp Paylaş › **Ana Ekrana Ekle** deyin: oyun kendi simgesiyle, tam ekran bir uygulama gibi açılır.
+  İlk açılıştan sonra **internet olmadan da** çalışır (`sw.js` oyunu cihaza kaydeder).
 
 ## Nasıl oynanır
 
@@ -30,6 +31,7 @@ Sonunda havai fişekler seni bekliyor!
 | `index.html` | Oyunun tamamı (grafik, karakterler, oyun) |
 | `sesler.js` | Türkçe kadın sesiyle kaydedilmiş anlatıcı cümleleri (dosyaya gömülü) |
 | `yayinla.command` | Çift tıklayınca değişiklikleri GitHub'a gönderir |
+| `manifest.webmanifest`, `sw.js`, `icons/` | iPad'de uygulama gibi açılma, simge ve internetsiz çalışma |
 | `robots.txt` | Arama motorlarının siteyi listelememesi için |
 
 Sesler Microsoft Edge'in "tr-TR-EmelNeural" sesiyle üretilmiştir.
